@@ -1,0 +1,40 @@
+[project]
+name = "govbudgetchecker"
+version = "0.1.0"
+description = "Scaffolding for GovBudgetChecker backend tooling"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+minversion = "7.0"
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["app", "e2e"]
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_no_return = true
+warn_unreachable = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+allow_untyped_defs = true
