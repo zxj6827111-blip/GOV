@@ -1,0 +1,913 @@
+version: v3_3_all_in_one
+generated_at: 2025-09-15 10:21:37
+profiles:
+- 预算公开
+- 决算公开
+notes:
+- 本文件整合：预算 v3_3 规则 + 九张表与说明一一对应 + 决算专项勾稽联动。
+- 可按 profiles 选择性启用；公共的归一化/证据输出在各子块内已配置。
+budget:
+  version: v3_3
+  effective_date: 2025-09-15
+  scope:
+    applies_to:
+    - 预算公开
+    levels:
+    - 区级政府
+    - 区级部门
+    - 区级单位
+    region_mode: cover_identification
+    domain_based_identification: false
+  normalization:
+    text:
+      unify_full_half_width: true
+      remove_whitespace_variants: true
+      fix_common_ocr_errors: true
+      normalize_punctuation_zh: true
+    placeholders:
+      ignore_tokens:
+      - XX
+      - ××
+      - '{单位}'
+      - '{部门}'
+      - 某某
+      - ……
+      ignore_inconsistency_across_doc: true
+    units:
+      currency_detect_patterns:
+      - 元
+      - 万元
+      - 亿元
+      base_unit: 万元
+      conversions:
+        元: 0.0001
+        万元: 1
+        亿元: 10000
+    numeric_tolerance:
+      amount_equal_tolerance_in_万元: 0.5
+      ratio_percentage_tolerance: 0.1
+  identification:
+    from_pdf_cover:
+      required_keys_any:
+      - 预算
+      - 公开
+      extract_fields:
+      - 年度
+      - 发布单位
+      - 文种/说明
+      - 发布日期(若有)
+    manual_override_allowed: true
+  timeliness:
+    rule_id: T-20days
+    description: 预算批复后20日内完成公开
+    enabled: true
+    deadline_days_after_approval: 20
+    approval_date_detection:
+      from_text_patterns:
+      - 预算批复
+      - 人大批准
+      - 人代会通过
+      fallback_manual_input: true
+    publish_time_sources_priority:
+    - 附件发布时间
+    - 正文发布时间
+    - 页面元数据
+    evidence:
+      keep_source_url: true
+      keep_page_screenshot: true
+  toc_alignment:
+    enabled: true
+    title_distance_max: 2
+    page_window_tolerance: 3
+    require_all_core_titles_present: true
+  required_sections:
+    core_chapters:
+    - names:
+      - 部门预算编制说明
+      - 预算编制说明
+      - 预算说明
+      required: true
+    - names:
+      - 三公经费预算情况说明
+      - 三公经费情况
+      - 三公经费预算说明
+      required: true
+    - names:
+      - 绩效目标
+      - 部门整体绩效目标
+      - 重点项目绩效目标
+      required: true
+  required_tables:
+    for_区级部门:
+      core_minimum_count: 9
+      tables:
+      - key: 收支总表
+        names:
+        - 部门预算收支总表
+        - 部门收支总体情况表
+        - 收支总表
+        required: true
+      - key: 功能分类表
+        names:
+        - 一般公共预算支出预算表（按功能分类）
+        - 一般公共预算支出表(功能)
+        required: true
+      - key: 经济分类表_财政拨款
+        names:
+        - 一般公共预算财政拨款支出经济分类预算表
+        - 财政拨款经济分类表
+        required: true
+      - key: 基本支出表
+        names:
+        - 一般公共预算基本支出预算表
+        - 基本支出预算表
+        required: true
+      - key: 项目支出表
+        names:
+        - 一般公共预算项目支出预算表
+        - 项目支出预算表
+        required: true
+      - key: 政府采购预算表
+        names:
+        - 政府采购预算表
+        required: true
+      - key: 政府性基金支出表
+        names:
+        - 政府性基金预算支出预算表
+        - 政府性基金预算支出表
+        conditional: 存在政府性基金预算
+      - key: 国资经营支出表
+        names:
+        - 国有资本经营预算支出预算表
+        - 国有资本经营预算支出表
+        conditional: 存在国有资本经营预算
+      - key: 三公经费预算表
+        names:
+        - 一般公共预算财政拨款“三公”经费预算表
+        - 三公经费预算表
+        required: true
+      - key: 绩效目标表
+        names:
+        - 部门整体支出绩效目标表
+        - 重点项目支出绩效目标表
+        - 绩效目标表
+        required: true
+    for_区级单位:
+      inherit_from: for_区级部门
+  duplicates_and_order:
+    detect_duplicate_titles_nearby_pages: true
+    duplicate_page_distance_threshold: 4
+    check_required_order: false
+  sangong_detail:
+    enabled: true
+    require_subitems:
+    - 因公出国（境）费
+    - 公务用车购置及运行费
+    - 公务接待费
+    require_total_equals_sum_of_subitems: true
+    if_year_on_year_change_described: true
+    yoy_keywords:
+    - 较上年
+    - 同比
+    - 增加
+    - 减少
+    - 变动
+    missing_detail_as_issue: true
+    evidence_capture:
+    - 表格截屏
+    - 命中文段
+  performance_disclosure:
+    enabled: true
+    require_any_of_titles:
+    - 部门整体绩效目标
+    - 重点项目绩效目标
+    - 绩效目标表
+    timeliness_follow_T-20days: true
+    evidence_capture:
+    - 表格截屏
+    - 命中文段
+  affiliated_units_coverage:
+    enabled: true
+    org_map_source: 可上传组织映射清单（部门->所属单位）
+    require_each_unit_has_disclosure: true
+    allow_manual_exempt_list: true
+    evidence_capture:
+    - 链接清单
+    - 附件列表
+  cross_checks:
+    enabled: true
+    checks:
+    - id: C-001
+      description: 三公总额=三项之和
+      expression: 三公经费预算表.合计 == 三公经费预算表.因公出国（境）费 + 三公经费预算表.公务用车购置及运行费 + 三公经费预算表.公务接待费
+    - id: C-002
+      description: 基本支出=人员支出+公用支出
+      expression: 基本支出表.合计 == 基本支出表.人员支出 + 基本支出表.公用支出
+    - id: C-003
+      description: 文字说明中的金额与对应表格一致
+      expression: 说明段落(金额) == 对应表格(金额)
+      match_scope: 同一章节内
+    - id: C-004
+      description: 收支总表合计=功能分类表合计（财政拨款口径）
+      expression: 收支总表.一般公共预算支出 == 功能分类表.合计(财政拨款)
+  ocr_pdf_handling:
+    prefer_text_layer: true
+    enable_ocr_if_scanned: true
+    table_structure_recovery:
+    - 表头识别
+    - 列对齐
+    - 合并单元格展开
+    min_confidence_for_auto_issue: 0.75
+  false_positive_controls:
+    double_evidence_strategy: true
+    severity_levels:
+    - 提示
+    - 疑似
+    - 确定
+    whitelist:
+      titles: []
+      phrases: []
+    exclusions:
+    - 住房公积金专项检查（已确认不纳入v3_3通用规则）
+  evidence_output:
+    include_page_number: true
+    include_bbox_screenshot: true
+    include_source_url: true
+    export_formats:
+    - CSV
+    - JSON
+    - AnnotatedPDF
+    show_rule_id_in_report: true
+  scoring:
+    enabled: true
+    weights:
+      toc_alignment: 0.15
+      required_tables: 0.35
+      sangong_detail: 0.15
+      performance_disclosure: 0.1
+      timeliness: 0.1
+      cross_checks: 0.1
+      affiliated_units_coverage: 0.05
+    penalty_per_missing_core_table: 5
+    penalty_for_timeliness_violation: 5
+    grade_bands:
+      A: '>=90'
+      B: 80-89
+      C: 70-79
+      D: <70
+  ui_behavior:
+    show_problem_cluster_by_type: true
+    allow_manual_override_publish_time: true
+    allow_feedback_mark_as_false_positive: true
+    template_upload_backend_enabled: true
+    template_versioning: true
+  notes:
+  - 本规则不绑定地区域名，完全以PDF内容识别为准。
+  - 条件性预算按有则校验、无则不判缺失。
+  - 年份比对以同一预算年度为准；跨年数据用于背景说明，不直接判错。
+table_explanation_alignment:
+  enabled: true
+  explain_search_window_pages: 3
+  match_within_same_chapter: true
+  allow_consolidated_explanation: false
+  title_distance_max: 2
+  enforce_numeric_consistency: true
+  numeric_tolerance_in_万元: 0.5
+  ratio_percentage_tolerance: 0.1
+  mapping:
+  - table_key: 收支总表
+    explanation_titles:
+    - 收支总体情况说明
+    - 预算总体情况说明
+    - 部门预算总体说明
+    - 预算安排总体情况
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 收入
+      - 支出
+      - 平衡
+      - 结转
+      - 主要变动
+      - 总体变化
+  - table_key: 功能分类表
+    explanation_titles:
+    - 一般公共预算支出情况说明
+    - 按功能分类支出情况说明
+    - 功能分类支出说明
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 教育
+      - 社会保障
+      - 卫生健康
+      - 城乡社区
+      - 科学技术
+      - 支出结构
+      - 重点领域
+  - table_key: 经济分类表_财政拨款
+    explanation_titles:
+    - 财政拨款支出经济分类情况说明
+    - 按经济分类支出说明
+    - 经济分类说明
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 人员经费
+      - 公用经费
+      - 商品和服务
+      - 对个人和家庭补助
+      - 资本性支出
+  - table_key: 基本支出表
+    explanation_titles:
+    - 基本支出情况说明
+    - 人员、公用经费情况说明
+    - 人员构成说明
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 人员支出
+      - 公用支出
+      - 人员编制
+      - 实有人员
+      - 在职
+      - 退休
+  - table_key: 项目支出表
+    explanation_titles:
+    - 项目支出情况说明
+    - 项目安排情况说明
+    - 新增项目说明
+    - 继续项目说明
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 项目名称
+      - 立项依据
+      - 绩效目标
+      - 主要内容
+      - 测算依据
+      - 资金安排
+  - table_key: 政府采购预算表
+    explanation_titles:
+    - 政府采购预算情况说明
+    - 采购预算说明
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 采购总额
+      - 货物
+      - 工程
+      - 服务
+      - 政策功能
+      - 节能环保
+      - 中小企业
+  - table_key: 政府性基金支出表
+    conditional: 存在政府性基金预算
+    explanation_titles:
+    - 政府性基金预算支出情况说明
+    - 政府性基金预算说明
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 基金来源
+      - 项目用途
+      - 结转结余
+      - 重大项目
+      - 调入调出
+  - table_key: 国资经营支出表
+    conditional: 存在国有资本经营预算
+    explanation_titles:
+    - 国有资本经营预算支出情况说明
+    - 国资经营预算说明
+    required_elements:
+    - type: any_of_keywords
+      values:
+      - 资本性支出
+      - 股权收益
+      - 调入调出
+      - 重点行业
+  - table_key: 三公经费预算表
+    explanation_titles:
+    - 三公经费预算情况说明
+    - 三公经费说明
+    required_elements:
+    - type: all_of_keywords
+      values:
+      - 因公出国（境）费
+      - 公务用车购置及运行费
+      - 公务接待费
+    - type: any_of_keywords
+      values:
+      - 较上年
+      - 同比
+      - 增加
+      - 减少
+      - 变化原因
+      - 变动原因
+  evidence_capture:
+    include_page_number: true
+    include_bbox_screenshot: true
+    include_source_url: true
+    include_matched_title_text: true
+  false_positive_controls:
+    require_dual_evidence: true
+    downgrade_if_consolidated: true
+  severity:
+    missing_explanation: 确定
+    weak_explanation_without_keywords: 疑似
+    consolidated_explanation_when_disallowed: 确定
+    numeric_inconsistency: 确定
+decision:
+  scope:
+    applies_to:
+    - 决算公开
+  normalization:
+    units:
+      base_unit: 万元
+    numeric_tolerance:
+      amount_equal_tolerance_in_万元: 0.5
+      ratio_percentage_tolerance: 0.1
+    functional_code_norm:
+      class_len: 3
+      section_len: 5
+      item_len: 7
+  yoy_reason_keywords:
+  - 较上年
+  - 同比
+  - 增加
+  - 减少
+  - 上年
+  - 原因
+  - 变动
+  - 波动
+  evidence:
+    include_page_number: true
+    include_bbox_screenshot: true
+    include_source_url: true
+  decision_cross_checks:
+  - id: D-001
+    table: 收入支出决算总表
+    explanation: 一、收入支出决算总体情况说明
+    checks:
+    - type: identity
+      description: 支出列总计 = 结余分配 + 年末结转和结余 + 本年支出合计
+      expression: 支出列.总计 == 支出列.结余分配 + 支出列.年末结转和结余 + 支出列.本年支出合计
+    - type: match_value
+      description: 年度收入支出总计与情况说明一致
+      table_field: 支出列.总计
+      explanation_field: 年度收入支出总计
+    - type: yoy_reason_required
+      description: 与上一年度比较后需写明原因
+      explanation_scope: 全文或本节
+      trigger_if_detected_phrases:
+      - 较上年
+      - 同比
+      require_keywords_any: $yoy_reason_keywords
+    - type: match_value
+      description: 政府性基金预算财政拨款收入：表格vs情况说明（二）
+      table_field: 收入列.政府性基金预算财政拨款收入
+      explanation: 二、收入决算情况说明
+      explanation_field: 政府性基金预算财政拨款收入
+    - type: percent_compare
+      description: 政府性基金预算财政拨款收入占比一致性
+      numerator: 收入列.政府性基金预算财政拨款收入
+      denominator: 收入决算表.本年收入合计
+      explanation_percent_field: 二、收入决算情况说明.政府性基金预算财政拨款收入占比
+  - id: D-002
+    table: 收入决算表
+    explanation: 二、收入决算情况说明
+    checks:
+    - type: match_value
+      description: 本年收入合计 一致
+      table_field: 本年收入合计
+      explanation_field: 本年收入合计
+    - type: match_value
+      description: 财政拨款收入 一致
+      table_field: 财政拨款收入
+      explanation_field: 财政拨款收入
+    - type: percent_compare
+      description: 财政拨款收入占比一致性（以本年收入合计为分母）
+      numerator: 财政拨款收入
+      denominator: 本年收入合计
+      explanation_percent_field: 财政拨款收入占比
+  - id: D-003
+    table: 支出决算表
+    explanation: 三、支出决算情况说明
+    checks:
+    - type: match_value
+      description: 本年支出合计一致
+      table_field: 本年支出合计
+      explanation_field: 本年支出合计
+    - type: match_value
+      description: 基本支出一致
+      table_field: 基本支出
+      explanation_field: 基本支出
+    - type: match_value
+      description: 项目支出一致
+      table_field: 项目支出
+      explanation_field: 项目支出
+    - type: percent_compare_group
+      description: 三项占比一致性（以本年支出合计为分母）
+      denominator: 本年支出合计
+      fields:
+      - name: 基本支出
+        explanation_percent_field: 基本支出占比
+      - name: 项目支出
+        explanation_percent_field: 项目支出占比
+  - id: D-004
+    table: 财政拨款收入支出决算总表
+    explanation: 四、财政拨款收入支出决算总体情况说明
+    checks:
+    - type: match_value
+      description: 支出列总计一致
+      table_field: 支出列.总计
+      explanation_field: 总计
+    - type: yoy_reason_required
+      description: 与上一年度比较需写原因
+      explanation_scope: 本节
+      trigger_if_detected_phrases:
+      - 较上年
+      - 同比
+      require_keywords_any: $yoy_reason_keywords
+  - id: D-005
+    table: 一般公共预算财政拨款支出决算表
+    explanation_blocks:
+      overall: （一）一般公共预算财政拨款支出决算总体情况
+      structure: （二）一般公共预算财政拨款支出决算结构情况
+      details: （三）一般公共预算财政拨款支出决算具体情况
+    checks:
+    - type: match_value
+      description: 总体合计一致
+      table_field: 合计
+      explanation_block: overall
+      explanation_field: 支出决算合计
+    - type: percent_compare
+      description: 总体合计占全年支出的百分比
+      numerator: 合计
+      denominator: 支出决算表.本年支出合计
+      explanation_block: overall
+      explanation_percent_field: 占比
+    - type: functional_class_structure_compare
+      description: 按‘类’级别统计结构占比，与结构情况说明一致
+      code_field: 功能分类科目编码
+      value_field: 金额
+      class_len: 3
+      explanation_block: structure
+      explanation_structure_fields: 按类列示的各项占比
+    - type: functional_class_details_compare
+      description: 识别‘类/款/项’条目与具体情况说明逐项对应
+      code_field: 功能分类科目编码
+      value_field: 金额
+      class_len: 3
+      section_len: 5
+      item_len: 7
+      explanation_block: details
+      require_no_missing_items: true
+    - type: budget_vs_final_compare_in_text
+      description: 逐项判断‘年初预算 vs 决算数’大小关系与文字描述一致，并要求变动原因
+      code_field: 功能分类科目编码
+      budget_field: 年初预算数
+      final_field: 决算数
+      explanation_block: details
+      require_keywords_any: $yoy_reason_keywords
+  - id: D-006
+    table: 一般公共预算财政拨款基本支出决算表
+    explanation: 六、一般公共预算财政拨款基本支出决算情况说明
+    checks:
+    - type: identity
+      description: 一般公共预算财政拨款基本支出 = 人员经费合计 + 公用经费合计
+      expression: 一般公共预算财政拨款基本支出 == 人员经费合计 + 公用经费合计
+    - type: explanation_items_alignment
+      description: 情况说明中的细项与表格科目一一对应（工资福利支出、公用经费、对个人和家庭的补助、资本性支出）
+      explanation_items:
+      - 工资福利支出
+      - 公用经费
+      - 对个人和家庭的补助
+      - 资本性支出
+      table_items_map:
+        工资福利支出: 工资福利支出
+        公用经费: 公用经费
+        对个人和家庭的补助: 对个人和家庭的补助
+        资本性支出: 资本性支出
+  - id: D-007
+    table: 财政拨款“三公”经费支出决算表
+    explanation: （一）“三公”经费财政拨款支出决算总体情况说明
+    checks:
+    - type: match_value_pair
+      description: 年初预算 与 支出决算 分别与表中‘合计预算数/合计决算数’一致
+      pairs:
+      - table_field: 合计预算数
+        explanation_field: 年初预算
+      - table_field: 合计决算数
+        explanation_field: 支出决算
+    - type: percent_compare_group
+      description: 三项占比一致（以合计决算数为分母），并核对分项金额
+      denominator: 合计决算数
+      fields:
+      - name: 因公出国（境）费
+        explanation_percent_field: 因公出国（境）费占比
+      - name: 公务用车购置及运行费
+        explanation_percent_field: 公务用车购置及运行费占比
+      - name: 公务接待费
+        explanation_percent_field: 公务接待费占比
+    - type: template_compliance_remark
+      description: 检查说明是否按模板写明‘变化及原因’等关键要素
+      require_keywords_any: $yoy_reason_keywords
+  - id: D-008
+    table: 政府性基金预算财政拨款收入支出决算表
+    explanation: 八、政府性基金预算财政拨款收入支出决算情况说明
+    checks:
+    - type: one_to_one_alignment
+      description: 表与说明内容一一对应（预算数/决算数及变动原因）
+      require_budget_final_compare_in_text: true
+      require_keywords_any: $yoy_reason_keywords
+    - type: empty_table_statement_required
+      description: 若单位无此预算，须在表下或说明处有‘空表说明’
+      explanation_phrases_any:
+      - 本年度无政府性基金预算
+      - 空表说明
+      - 无相关预算
+  - id: D-009
+    table: 国有资本经营预算财政拨款收入支出决算表
+    explanation: 国有资本经营预算财政拨款收入支出决算情况说明（对应章节）
+    checks:
+    - type: empty_table_statement_required
+      description: 绝大多数无此预算，必须出现‘空表说明’或等效表述
+      explanation_phrases_any:
+      - 本年度无国有资本经营预算
+      - 空表说明
+      - 无相关预算
+  severity_and_promotion:
+    double_evidence_strategy: true
+    severity:
+      identity_violation: 确定
+      value_mismatch: 确定
+      percent_mismatch: 确定
+      missing_reason_text: 疑似
+      structural_missing: 确定
+      empty_table_statement_missing: 确定
+  notes:
+  - 功能分类科目编码按 3/5/7 位识别为 类/款/项。
+  - 占比分母固定口径：收入→《收入决算表·本年收入合计》；支出→《支出决算表·本年支出合计》；三公→合计决算数。
+  - 上一年度数据用于触发‘原因说明’检查，跨年结构差异不直接判错。
+metadata:
+  version: v3_3_r2
+  generated_at: '2025-09-16'
+  project: 财政局检查
+global_config:
+  rounding_tolerance: 0.01
+  currency_units:
+  - 元
+  - 万元
+  region_defaults:
+  - 上海市
+  - 中央部门
+  screenshot:
+    annotate: true
+    box_color: red
+    thickness: 3
+  evidence:
+    include_page_number: true
+    include_text_snippet: true
+rules:
+- rule_id: R001
+  title: 金额单位口径错误（万元/元）
+  severity: high
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: regex+cross_ref
+    logic: '1) 在说明文字中匹配金额表达：(?P<num>[0-9]+(\.[0-9]{1,2})?)\s*元
+
+      2) 在同页/相邻页表格中查找对应科目或上下文（如“住房公积金”）金额的单位（通常为万元）
+
+      3) 若文字中单位为“元”但表格/模板口径为“万元”，且数值在[0.01, 9999]之间 → 报错
+
+      '
+    patterns:
+    - (?P<subject>住房公积金|机关运行经费|三公经费|项目经费|预算|决算)[：:，、]?\s*(?P<num>[0-9]+(\.[0-9]{1,2})?)\s*元
+  description: 文本描述把‘万元’写成‘元’，导致数量级错误。
+  fix_suggestion: 将单位统一为‘万元’，或在括号中标注（即：35,838.35 元=3.58 万元）；数值以底稿为准重新输出。
+  examples:
+  - 住房公积金 3.58元（应为3.58万元）
+  false_positive_notes: ''
+  evidence_extract:
+    scope: 段落句级
+    neighbor_tables: true
+  auto_explain: ''
+- rule_id: R002
+  title: 功能分类科目编码错配（常见码表）
+  severity: high
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: dictionary
+    logic: 用内置字典校验‘类-款-项’与名称一致性；若不一致→报错。仅对高频科目启用以避免误报。
+    dictionary:
+      201-39-99: 其他社会工作事务支出
+      221-02-01: 住房公积金
+      210-11-02: 事业单位医疗保险
+  description: 表中‘类款项编码’与‘科目名称’不一致或出现明显错码。
+  fix_suggestion: 按科目名回填正确编码，或按编码更正科目名；以财政科目最新目录为准。
+  examples:
+  - 出现 ‘2031-39-99 其他社会工作事务支出’（应为 201-39-99）。
+  false_positive_notes: 若为本地区扩展科目或临时科目，请将新码加入字典白名单后重跑。
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R003
+  title: 重复词与口误（标点/词语重复）
+  severity: low
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: regex
+    logic: 检测相邻重复词（中文两字及以上）或数字+量词重复。
+    patterns:
+    - ([一-龥]{2,})\1
+    - (增加){2,}
+  description: 版式或人工校对疏漏导致的重复词。
+  fix_suggestion: 删除冗余重复词或合并为一次表达。
+  examples:
+  - 比2024年预算增加增加584.0909万元。
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R004
+  title: 预算完成口径用词错误（年初预算为0）
+  severity: critical
+  doc_scope:
+  - 决算
+  detection:
+    type: logic
+    logic: "若同段命中：\n a) '年初预算为0' 或 等价表述；且\n b) 出现 '完成年初预算的X%'\n→ 判定为口径用词错误，应为 '完成全年预算的X%'。\n"
+  description: 年初预算为0无法作为完成率分母。
+  fix_suggestion: 将‘完成年初预算的X%’改为‘完成全年预算的X%’，并解释年初预算为0的原因（如：新设单位）。
+  examples:
+  - 年初预算为0…支出决算为307.82万元，完成年初预算的95.89%。
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R005
+  title: 科目用途错配（住房公积金被描述为医疗保险等）
+  severity: critical
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: keyword_proximity
+    logic: 若句内或相邻句出现‘住房公积金’与‘医疗保险/医疗费/医保’等医疗类关键词→报错。
+    keywords:
+      subject:
+      - 住房公积金
+      - '2210201'
+      mismatch:
+      - 医疗保险
+      - 医保
+      - 医疗费
+      - 事业单位医疗保险
+    window: 1
+  description: 住房公积金属于住房保障，不应描述为医疗保险支出。
+  fix_suggestion: 将用途改为‘为职工缴存住房公积金’（或等价表述）。
+  examples:
+  - 住房公积金（项）。主要用于：事业单位医疗保险支出。
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R006
+  title: 单位称谓不一致（封面/表头/正文）
+  severity: high
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: cross_page_string_set
+    logic: 抽取封面、目录、单位概况、各表表头中的单位全称并去重；若出现‘普陀区’有/无不一致或简称顶替全称→报错。
+  description: 模板或复制导致的单位名称不一致。
+  fix_suggestion: 统一为全称，例如‘上海市普陀区规划和自然资源局’。
+  examples:
+  - 封面含‘普陀区’，而总表表头为‘上海市规划和自然资源局’。
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R007
+  title: 总计与基本/项目支出勾稽不符
+  severity: critical
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: math
+    logic: 校验：合计 ≈ 基本支出 + 项目支出（允许±rounding_tolerance）；不符→报错。
+  description: 基本/项目拆分与合计不一致。
+  fix_suggestion: 以底稿为准校正任一侧明细；必要时补充‘因四舍五入产生的0.01万元以内差异’说明。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R008
+  title: ‘三公’经费口径一致性（汇总=分项）
+  severity: high
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: math
+    logic: 校验：三公合计≈出国（境）费+公务用车购置及运行+公务接待费；若合计为0，分项亦应为0。
+  description: 三公经费合计与分项不一致或合计为0而分项不为0。
+  fix_suggestion: 按分项回填合计或按合计核减分项，并在说明中解释变化原因。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R009
+  title: 机关运行经费与公用经费一致性
+  severity: high
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: cross_table
+    logic: 提取说明文的‘机关运行经费 X 万元’与基本支出经济分类表中的‘公用经费’比对，差值≤容差为通过，超过则报错。
+  description: ‘机关运行经费’文字口径与表内公用经费数不一致。
+  fix_suggestion: 以经济分类表为准修正文字口径，或补充口径说明。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R010
+  title: 项目经费叙述合计与表间不一致
+  severity: high
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: nlp+math
+    logic: 抽取项目清单中的金额（单位统一到万元）求和，与表中项目支出总额对比；若差值>rounding_tolerance → 报错。
+  description: 文字清单金额之和与项目支出表不一致，可能存在位数/录入错误。
+  fix_suggestion: 核对各项目金额与单位（10万/100万、8万/80万），以表格为准校正叙述。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R011
+  title: 四舍五入导致的0.01万元以内差异（提示）
+  severity: info
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: tolerance
+    logic: 任意跨表/同表分项合计差值≤rounding_tolerance（0.01）→仅提示，不计错误。
+  description: 小额进位差属于可接受范围。
+  fix_suggestion: 可在说明中加入固定语句：‘因四舍五入产生的0.01万元以内差异’。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R012
+  title: 结转差异自动解释（年初结转−年末结转）
+  severity: medium
+  doc_scope:
+  - 决算
+  detection:
+    type: cross_table_math
+    logic: 若（支出决算表合计−财政拨款支出合计）≈（年初结转−年末结转），生成解释文本并定位受影响功能分类。
+  description: 帮助读者理解不同表之间的金额差异来源。
+  fix_suggestion: 自动在‘其他重要事项说明’生成一句解释，必要时定位差异影响的功能分类（如城乡社区支出）。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R013
+  title: 收入决算表样式白名单（上海/中央）
+  severity: whitelist
+  doc_scope:
+  - 决算
+  detection:
+    type: layout_whitelist
+    logic: 当表头包含‘收入决算表’，列包含‘财政拨款收入/事业收入/其他收入’，且行维度为‘功能分类（含科目编码）’→在地区属于[上海市, 中央部门]时标记为‘模板符合’，不作为错误。
+  description: 避免将上海/中央惯用样式误判为模板错误。
+  fix_suggestion: 若在其他地区出现该样式，请按本地财政公开样表评估后决定是否加入白名单。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
+- rule_id: R014
+  title: 必备表格与章节完整性检查（九张表）
+  severity: critical
+  doc_scope:
+  - 预算
+  - 决算
+  detection:
+    type: presence
+    logic: "检查以下要素是否存在：\n - 收入支出决算总表\n - 收入决算表\n - 支出决算表\n - 财政拨款收支总表\n - 一般公共预算财政拨款支出决算表（功能分类）\n - 一般公共预算财政拨款基本支出决算表（经济分类）\n\
+      \ - 政府性基金预算财政拨款收入支出决算表（如适用）\n - 国有资本经营预算财政拨款收入支出决算表（如适用）\n - ‘三公’经费、机关运行经费、绩效等说明章节\n"
+  description: 缺页/缺表会影响对外信息完整性。
+  fix_suggestion: 补齐缺漏表格或在‘无此项’情形下按规范给出空表与说明。
+  examples: []
+  false_positive_notes: ''
+  evidence_extract: {}
+  auto_explain: ''
