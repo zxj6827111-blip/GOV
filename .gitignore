@@ -8,3 +8,4 @@ app/.next/
 app/out/
 .DS_Store
 pytest_cache/
+tiny.pdf

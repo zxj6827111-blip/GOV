@@ -1,24 +1,21 @@
-"""FastAPI application entry-point for GovBudgetChecker."""
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from starlette.responses import JSONResponse
 
-from __future__ import annotations
+app = FastAPI()
 
-from fastapi import FastAPI
-
-from api.config import AppConfig
-
-app = FastAPI(title="GovBudgetChecker API", version="0.1.0")
-
-
-@app.get("/healthz")
-def read_health() -> dict[str, str]:
-    """Return a simple health check payload."""
-
+@app.get("/health")
+async def health():
     return {"status": "ok"}
 
+@app.get("/")
+async def root():
+    return {"service": "GovBudgetChecker API", "status": "ok"}
 
-@app.get("/config/rules")
-def get_rules_config() -> dict[str, str]:
-    """Expose the currently configured rules file path."""
-
-    config = AppConfig.load()
-    return {"rules_file": str(config.rules_file)}
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    if not (file.content_type == "application/pdf" or (file.filename or "").lower().endswith(".pdf")):
+        raise HTTPException(status_code=415, detail="仅支持 PDF 文件")
+    data = await file.read()
+    if len(data) > 30 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="文件超过 30MB 限制")
+    return JSONResponse({"job_id": "demo", "filename": file.filename, "size": len(data)})
