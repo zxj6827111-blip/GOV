@@ -1,10 +1,19 @@
-export const runtime = 'nodejs';
+import { NextRequest, NextResponse } from "next/server";
+import { apiBase } from "@/lib/apiBase";
 
-export async function POST(_req: Request, { params }: { params: { job_id: string }}) {
-  const r = await fetch(`http://localhost:8000/analyze/${params.job_id}`, { method: 'POST' });
-  const text = await r.text();
-  return new Response(text, {
-    status: r.status,
-    headers: { 'content-type': r.headers.get('content-type') || 'application/json' },
-  });
+export const runtime = "nodejs";
+
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: { job_id: string } }
+) {
+  try {
+    const upstream = await fetch(`${apiBase}/analyze2/${params.job_id}`, {
+      method: "POST",
+    });
+    const json = await upstream.json();
+    return NextResponse.json(json, { status: upstream.status });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || String(e) }, { status: 500 });
+  }
 }
