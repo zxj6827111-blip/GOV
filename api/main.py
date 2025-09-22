@@ -5,65 +5,17 @@ import time
 import hashlib
 import threading
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 
+import pdfplumber  # ✅ 新增：读取 PDF
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-# api/main.py
-import os
-from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="GovBudgetChecker API")
+# 直接使用引擎暴露的构建与包装函数
+from engine.pipeline import build_document, build_issues_payload
 
-# -------------------- CORS（跨域） --------------------
-# 推荐精确白名单；如果你暂时不确定域名，可在开发时用 allow_origins=["*"]（不带凭据）
-# 浏览器不能访问 0.0.0.0；用 localhost 或你的转发域名（codespaces）
-default_origins = [
-    "http://localhost:3000",
-    "https://localhost:3000",
-]
-
-# Codespaces / GitHub 转发域名（如果你在云端跑前端）
-codespace = os.getenv("CODESPACE_NAME")
-gh_dom = os.getenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
-if codespace and gh_dom:
-    # 允许 3000 和 8000 两个端口的转发域名
-    default_origins += [
-        f"https://{codespace}-3000.{gh_dom}",
-        f"https://{codespace}-8000.{gh_dom}",
-    ]
-
-# 允许通过环境变量追加自定义白名单，多个用逗号分隔
-extra = os.getenv("ALLOW_ORIGINS", "").strip()
-if extra:
-    default_origins += [o.strip() for o in extra.split(",") if o.strip()]
-
-# 开发期也可直接放开："*"
-allow_all = os.getenv("CORS_ALLOW_ALL", "false").lower() in ("1", "true", "yes")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"] if allow_all else default_origins,
-    allow_credentials=False,                 # 如果不需要 cookie，保持 False 更安全
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# -------------------- 健康检查 --------------------
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-# 下面是你已有的上传/状态/分析路由……（保持不动）
-# ...
-
-# -----------------------------
-# 基础配置
-# -----------------------------
+# ----------------------------- 基础配置 -----------------------------
 APP_TITLE = "GovBudgetChecker API"
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "30"))
 UPLOAD_ROOT = Path(os.getenv("UPLOAD_DIR", "uploads")).resolve()
@@ -71,25 +23,34 @@ UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title=APP_TITLE)
 
-# 允许前端调试域名
+# ----------------------------- CORS -----------------------------
+# 本地 & Codespaces
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "https://jubilant-orbit-r4v9ww9pgq79fgwr-8000.app.github.dev",
 ]
+codespace = os.getenv("CODESPACE_NAME")
+gh_dom = os.getenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
+if codespace and gh_dom:
+    origins += [
+        f"https://{codespace}-3000.{gh_dom}",
+        f"https://{codespace}-8000.{gh_dom}",
+    ]
+
+extra = os.getenv("ALLOW_ORIGINS", "").strip()
+if extra:
+    origins += [o.strip() for o in extra.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://.*\\.app\\.github\\.dev",
-    allow_credentials=True,
+    allow_origin_regex=r"https://.*\.app\.github\.dev",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -----------------------------
-# 工具函数
-# -----------------------------
+# ----------------------------- 工具函数 -----------------------------
 def _safe_write(job_dir: Path, payload: Dict[str, Any]) -> None:
     """将状态写入 status.json（带异常保护）"""
     try:
@@ -100,56 +61,105 @@ def _safe_write(job_dir: Path, payload: Dict[str, Any]) -> None:
         (job_dir / "status_error.log").write_text(str(e), encoding="utf-8")
 
 
+def _find_first_pdf(job_dir: Path) -> Path:
+    pdfs = sorted(job_dir.glob("*.pdf"))
+    if not pdfs:
+        raise FileNotFoundError("未在该 job 目录下找到 PDF 文件")
+    return pdfs[0]
+
+
+def _extract_tables_from_page(page) -> List[List[List[str]]]:
+    """
+    读取单页表格，返回：该页的多张表；每张表是 2D 数组（行→列）
+    （和引擎里的逻辑一致，先用线策略，再退回默认）
+    """
+    tables: List[List[List[str]]] = []
+    try:
+        t1 = page.extract_tables(table_settings={
+            "vertical_strategy": "lines",
+            "horizontal_strategy": "lines",
+            "intersection_tolerance": 3,
+            "min_words_vertical": 1,
+            "min_words_horizontal": 1,
+        }) or []
+        tables += t1
+    except Exception:
+        pass
+    try:
+        if not tables:
+            t2 = page.extract_tables() or []
+            tables += t2
+    except Exception:
+        pass
+
+    norm_tables: List[List[List[str]]] = []
+    for tb in tables:
+        norm_tables.append([[("" if c is None else str(c)).strip() for c in row] for row in (tb or [])])
+    return norm_tables
+
+
 def _run_pipeline(job_dir: Path) -> None:
     """
-    解析管线（示例）：
-    - processing -> done
-    - 这里你可以调用真正的规则引擎；目前是演示结果
+    真正的解析管线：
+    - 读取 job_dir 下的 PDF
+    - 解析文本与表格，构建 Document
+    - 调用 build_issues_payload 打包返回
+    - 写入 status.json（result.summary / result.issues / result.meta）
     """
     try:
+        # 标记 processing
         _safe_write(job_dir, {
             "job_id": job_dir.name,
             "status": "processing",
-            "progress": 10,
+            "progress": 5,
             "ts": time.time(),
         })
-        time.sleep(0.8)
 
-        # ====== 在此处接“规则引擎” ======
-        # 你可以引入自己的模块： from rules_v33 import run_rules
-        # result = run_rules(pdf_path= str(job_dir/'xxx.pdf'))
-        # issues = result.issues
-        # summary = result.summary
-        # 这里仍然给一个演示 payload:
-        issues = [
-            {
-                "rule": "MUST_HAVE_DIR",
-                "severity": "info",
-                "message": "前 3 页未检测到“目录”字样（示例规则）",
-                "location": {"page": 1}
-            },
-            {
-                "rule": "FILE_SIZE_INFO",
-                "severity": "info",
-                "message": "文件大小约 0.23 MB（信息）"
+        pdf_path = _find_first_pdf(job_dir)
+        started = time.time()
+
+        # 读取 PDF -> 文本/表格
+        page_texts: List[str] = []
+        page_tables: List[List[List[List[str]]]] = []
+        with pdfplumber.open(str(pdf_path)) as pdf:
+            for p in pdf.pages:
+                page_texts.append(p.extract_text() or "")
+                page_tables.append(_extract_tables_from_page(p))
+        filesize = pdf_path.stat().st_size
+
+        # 构建 Document
+        doc = build_document(
+            path=str(pdf_path),
+            page_texts=page_texts,
+            page_tables=page_tables,
+            filesize=filesize
+        )
+
+        # 运行规则并打包统一结构（issues: {error/warn/info/all}）
+        payload_issues = build_issues_payload(doc)
+
+        # 组装最终返回体（保持你之前的契约字段）
+        result = {
+            "summary": "",                       # 现在没有汇总，可后续填充
+            "issues": payload_issues["issues"],  # 统一分桶结构
+            "meta": {
+                "pages": len(page_texts),
+                "filesize": filesize,
+                "job_id": job_dir.name,
+                "started_at": started,
+                "finished_at": time.time(),
             }
-        ]
-
-        meta = {}
-        # 如你有 OCR / 页面数等，可在 meta 里追加
+        }
 
         payload = {
             "job_id": job_dir.name,
             "status": "done",
             "progress": 100,
-            "result": {
-                "summary": f"规则共命中 {len(issues)} 条",
-                "issues": issues,
-                "meta": meta,
-            },
+            "result": result,
             "ts": time.time(),
         }
         _safe_write(job_dir, payload)
+
     except Exception as e:
         _safe_write(job_dir, {
             "job_id": job_dir.name,
@@ -158,9 +168,7 @@ def _run_pipeline(job_dir: Path) -> None:
             "ts": time.time(),
         })
 
-# -----------------------------
-# 健康/根
-# -----------------------------
+# ----------------------------- 健康/根 -----------------------------
 @app.get("/health")
 def health():
     return {"status": "ok", "service": APP_TITLE}
@@ -169,9 +177,7 @@ def health():
 def root():
     return {"service": APP_TITLE, "status": "ok"}
 
-# -----------------------------
-# 上传 & 下载
-# -----------------------------
+# ----------------------------- 上传 & 下载 -----------------------------
 def _ensure_pdf(file: UploadFile):
     ct = (file.content_type or "").lower()
     name = (file.filename or "").lower()
@@ -227,9 +233,7 @@ def download(job_id: str, filename: str):
         raise HTTPException(status_code=404, detail="file not found")
     return FileResponse(path, media_type="application/pdf", filename=safe_name)
 
-# -----------------------------
-# 触发解析（新版 analyze2） & 轮询（新版 jobs_adv2）
-# -----------------------------
+# ----------------------------- 触发解析 & 轮询 -----------------------------
 @app.post("/analyze2/{job_id}")
 def analyze2(job_id: str):
     job_dir = (UPLOAD_ROOT / job_id).resolve()
@@ -239,20 +243,27 @@ def analyze2(job_id: str):
     threading.Thread(target=_run_pipeline, args=(job_dir,), daemon=True).start()
     return {"job_id": job_id, "status": "queued"}
 
+# 轮询（保持接口名不变）
 @app.get("/jobs_adv2/{job_id}/status")
 def job_status_adv2(job_id: str):
     job_dir = (UPLOAD_ROOT / job_id).resolve()
     if not job_dir.exists() or not job_dir.is_dir():
         raise HTTPException(status_code=404, detail="job not found")
     p = job_dir / "status.json"
-    if not p.exists():
-        return {"job_id": job_id, "status": "unknown"}
-    try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
-        return {"job_id": job_id, "status": "unknown"}
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {"job_id": job_id, "status": "unknown"}
+
+    # 如果刚触发但文件还没写出来，先返回 queued，避免“unknown”刷屏
+    newest = max((f.stat().st_mtime for f in job_dir.glob("*") if f.is_file()), default=0)
+    if newest and time.time() - newest < 60:
+        return {"job_id": job_id, "status": "queued"}
+
+    return {"job_id": job_id, "status": "unknown"}
 
 # -----------------------------
-# 启动命令（供参考）
+# 启动示例：
 # uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 # -----------------------------

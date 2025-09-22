@@ -125,11 +125,52 @@ export default function HomePage() {
   }
 
   // 分组展示
-  const issues: Issue[] =
-    (status && (status as any).result?.issues ? (status as any).result.issues : []) || [];
-  const severe = issues.filter((x) => ["critical", "error"].includes(x.severity));
-  const warn = issues.filter((x) => x.severity === "warn");
-  const info = issues.filter((x) => x.severity === "info");
+type Issue = {
+  rule: string;
+  severity: "error" | "warn" | "info" | string;
+  message: string;
+  location?: Record<string, any>;
+};
+
+type IssuesBuckets = {
+  error: Issue[];
+  warn: Issue[];
+  info: Issue[];
+  all: Issue[];
+};
+
+const normalizeIssues = (raw: any): IssuesBuckets => {
+  // 后端老格式：直接就是 Issue[]
+  if (Array.isArray(raw)) {
+    const arr = raw as Issue[];
+    const sev = (s: any) => (String(s || "").toLowerCase());
+    return {
+      error: arr.filter((x) => ["critical", "error"].includes(sev(x.severity))),
+      warn:  arr.filter((x) => sev(x.severity) === "warn"),
+      info:  arr.filter((x) => sev(x.severity) === "info"),
+      all:   arr,
+    };
+  }
+  // 新格式：{ error:[], warn:[], info:[], all:[] }
+  return {
+    error: raw?.error ?? [],
+    warn:  raw?.warn  ?? [],
+    info:  raw?.info  ?? [],
+    all:   raw?.all   ?? [ ...(raw?.error ?? []), ...(raw?.warn ?? []), ...(raw?.info ?? []) ],
+  };
+};
+
+// 统一拿到 buckets
+const buckets: IssuesBuckets = normalizeIssues((status as any)?.result?.issues);
+
+// 想要三栏就分别用 error/warn/info：
+const severe: Issue[] = buckets.error;
+const warn:   Issue[] = buckets.warn;
+const info:   Issue[] = buckets.info;
+
+// 想要单卡合并展示就用：
+const allIssues: Issue[] = buckets.all;
+
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8 space-y-8">
@@ -199,7 +240,7 @@ export default function HomePage() {
         </div>
 
         {/* 如果完全无问题 */}
-        {issues.length === 0 && status?.status === "done" && (
+        {allIssues.length === 0 && status?.status === "done" && (
           <ResultCard title="没有发现问题" issues={[]} tone="ok" />
         )}
       </section>
