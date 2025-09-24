@@ -31,33 +31,50 @@ def _extract_tables_from_page(page) -> List[List[List[str]]]:
         norm_tables.append([[("" if c is None else str(c)).strip() for c in row] for row in (tb or [])])
     return norm_tables
 
-def run_rules(doc):
+def run_rules(doc, use_ai_assist=False):
+    """
+    执行规则检查
+    :param doc: 文档对象
+    :param use_ai_assist: 是否使用AI辅助
+    """
+    # 直接使用传统规则引擎，避免混合验证的异步问题
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"使用传统规则引擎，AI辅助: {use_ai_assist}")
+    
     issues = []
     for rule in ALL_RULES:
         try:
-            issues.extend(rule.apply(doc))
+            # 如果规则支持AI辅助，传递参数
+            if hasattr(rule, 'apply_with_ai') and use_ai_assist:
+                issues.extend(rule.apply_with_ai(doc, use_ai_assist))
+            else:
+                issues.extend(rule.apply(doc))
         except Exception as e:
             issues.append(Issue(
                 rule=rule.code, severity="hint",
                 message=f"规则执行异常：{e}",
                 location={"page": 1, "pos": 0}
             ))
-    # ★ 统一排序 + 编号
-    issues = order_and_number_issues(doc, issues)
-    return issues
+    
+    return order_and_number_issues(doc, issues)
 
 # ===== 在此行下面粘贴 =====
 
 def _issue_to_dict(x) -> dict:
     if isinstance(x, dict):
+        rule_code = x.get("rule", "")
         return {
-            "rule": x.get("rule", ""),
+            "rule": rule_code,
+            "rule_id": rule_code,  # 添加rule_id字段
             "severity": (x.get("severity") or "info"),
             "message": x.get("message", ""),
             "location": (x.get("location") or {}),
         }
+    rule_code = getattr(x, "rule", "") or ""
     return {
-        "rule": getattr(x, "rule", "") or "",
+        "rule": rule_code,
+        "rule_id": rule_code,  # 添加rule_id字段
         "severity": getattr(x, "severity", None) or "info",
         "message": getattr(x, "message", "") or "",
         "location": getattr(x, "location", None) or {},
@@ -72,7 +89,7 @@ def _norm_sev(s: Optional[str]) -> str:  # ✅ 参数改为 Optional[str]
     return "info"
 
 
-def build_issues_payload(doc) -> dict:
+def build_issues_payload(doc, use_ai_assist=False) -> dict:
     """
     把规则结果打包成前端需要的结构：
     {
@@ -84,7 +101,7 @@ def build_issues_payload(doc) -> dict:
       }
     }
     """
-    raw_list = run_rules(doc)  # List[Issue]
+    raw_list = run_rules(doc, use_ai_assist)  # List[Issue]
     items = [_issue_to_dict(x) for x in raw_list]
     for it in items:
         it["severity"] = _norm_sev(it.get("severity"))

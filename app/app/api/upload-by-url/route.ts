@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiBase } from "@/app/lib/apiBase";
+import { apiBase } from "@/lib/apiBase";
 
 export const runtime = "nodejs";
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const fd = new FormData();
     fd.set("file", file);
 
-    const upstream = await fetch(`${apiBase()}/upload`, { method: "POST", body: fd as any });
+    const upstream = await fetch(`${apiBase}/upload`, { method: "POST", body: fd as any });
     const json = await upstream.json();
     return NextResponse.json(json, { status: upstream.status });
   } catch (e: any) {

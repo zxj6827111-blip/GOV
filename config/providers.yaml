@@ -1,0 +1,113 @@
+# AI 提供商配置文件
+# 支持多提供商容灾回退
+
+# 区域设置
+region: "cn"   # cn | global
+
+# 回退链配置 - 按优先级排序
+fallback_chain: 
+  - "zhipu_flash"
+  - "zhipu_reasoner"
+  - "doubao_pro"
+  - "openai_fallback"
+
+# 提供商详细配置
+providers:
+  # 智谱AI - GLM-4.5-Flash (快速模型)
+  zhipu_flash:
+    enabled: true
+    base: "https://open.bigmodel.cn/api/paas/v4"
+    api_key_env: "ZHIPU_API_KEY"
+    model: "glm-4.5-flash"
+    timeout_s: 60
+    retries: 1
+    model_aliases: 
+      - "glm-4-flash"
+      - "glm-4.5"
+    description: "智谱AI快速模型，适合简单任务"
+    
+  # 智谱AI - GLM-4.5 (推理模型)
+  zhipu_reasoner:
+    enabled: true
+    base: "https://open.bigmodel.cn/api/paas/v4"
+    api_key_env: "ZHIPU_API_KEY"
+    model: "glm-4.5"
+    timeout_s: 90
+    retries: 0
+    model_aliases:
+      - "glm-4"
+      - "glm-4-plus"
+    description: "智谱AI推理模型，适合复杂分析"
+    
+  # 豆包AI - Doubao Pro
+  doubao_pro:
+    enabled: true
+    base: "https://ark.cn-beijing.volces.com/api/v3"
+    api_key_env: "ARK_API_KEY"
+    model: "doubao-1-5-pro-32k-250115"
+    timeout_s: 60
+    retries: 0
+    model_aliases:
+      - "doubao-pro"
+      - "doubao-1.5-pro"
+    description: "字节跳动豆包专业版"
+    
+  # OpenAI 兼容接口 (备用)
+  openai_fallback:
+    enabled: false  # 默认禁用，需要时手动启用
+    base: "https://api.openai.com/v1"
+    api_key_env: "OPENAI_API_KEY"
+    model: "gpt-4o-mini"
+    timeout_s: 60
+    retries: 0
+    model_aliases:
+      - "gpt-4-mini"
+      - "gpt-4o"
+    description: "OpenAI GPT-4o-mini 备用模型"
+
+# 合并阈值配置
+thresholds:
+  # 结果合并相似度阈值
+  MERGE_SIM_TITLE: 0.85      # 标题相似度阈值
+  MONEY_TOL: 0.005           # 金额相对误差容差 (0.5%)
+  PCT_TOL: 0.002             # 百分比绝对差容差 (0.2pp)
+  PAGE_TOL: 1                # 页码容差
+
+# 熔断器配置
+circuit_breaker:
+  failure_threshold: 3       # 连续失败次数阈值
+  open_seconds: 60          # 熔断器打开时间（秒）
+  half_open_max_calls: 1    # 半开状态最大调用次数
+
+# 重试配置
+retry:
+  max_attempts: 3           # 最大重试次数
+  base_delay_ms: 1000      # 基础延迟毫秒
+  max_delay_ms: 10000      # 最大延迟毫秒
+  exponential_base: 2      # 指数回退基数
+  jitter: true             # 是否添加抖动
+
+# AI 调用默认参数
+ai_defaults:
+  temperature: 0.1         # 温度参数，确保确定性
+  max_tokens: 4000        # 最大输出token数
+  top_p: 0.9              # 核采样参数
+  frequency_penalty: 0.0  # 频率惩罚
+  presence_penalty: 0.0   # 存在惩罚
+
+# 监控和日志配置
+monitoring:
+  log_requests: true       # 是否记录请求日志
+  log_responses: false     # 是否记录响应日志（可能包含敏感信息）
+  mask_api_keys: true      # 是否掩码API密钥
+  metrics_enabled: true    # 是否启用指标收集
+  health_check_interval: 300  # 健康检查间隔（秒）
+
+# 安全配置
+security:
+  api_key_mask_length: 8   # API密钥掩码长度（显示前4后4字符）
+  max_content_log_length: 1000  # 最大内容日志长度
+  sensitive_fields:        # 敏感字段列表
+    - "api_key"
+    - "authorization"
+    - "token"

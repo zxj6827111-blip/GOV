@@ -3,6 +3,7 @@ __pycache__/
 *.egg-info/
 .venv/
 .env
+.env.*
 node_modules/
 app/.next/
 app/out/
@@ -13,5 +14,8 @@ tiny.pdf
 # uploads
 uploads/
 
-# uploads
-uploads/
+# test files
+test_*.py
+test_*.txt
+big.bin
+not.pdf.txt

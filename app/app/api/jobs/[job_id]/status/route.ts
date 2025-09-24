@@ -27,10 +27,10 @@ export async function GET(
 ) {
   const job = encodeURIComponent(params.job_id);
 
-  // 优先尝试后端 /jobs_adv2/{job}/status，回退到 /jobs/{job}/status
+  // 优先尝试后端 /api/jobs/{job}/status，回退到 /jobs_adv2/{job}/status
   const candidates = [
+    `${apiBase}/api/jobs/${job}/status`,
     `${apiBase}/jobs_adv2/${job}/status`,
-    `${apiBase}/jobs/${job}/status`,
   ];
 
   for (let i = 0; i < candidates.length; i++) {

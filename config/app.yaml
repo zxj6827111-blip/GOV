@@ -1,0 +1,69 @@
+# GovBudgetChecker 双模式配置文件
+
+# 双模式开关
+dual_mode:
+  enabled: true                    # 是否启用双模式
+  ai_enabled: true                 # 是否启用AI分析
+  rule_enabled: true               # 是否启用规则分析
+  merge_enabled: true              # 是否启用结果合并
+
+# AI配置
+ai:
+  provider: "zhipu"                # AI提供商
+  model: "glm-4.5-flash"          # 模型名称
+  base_url: "https://open.bigmodel.cn/api/paas/v4"
+  timeout_seconds: 60              # 超时时间
+  retry_count: 1                   # 重试次数
+  temperature: 0.2                 # 温度参数
+  max_tokens: 4000                 # 最大token数
+
+# 规则引擎配置
+rules:
+  version: "v3.3"                  # 规则版本
+  timeout_seconds: 30              # 超时时间
+  enable_cache: true               # 是否启用缓存
+
+# 合并配置
+merge:
+  title_similarity_threshold: 0.85  # 标题相似度阈值
+  money_tolerance: 0.005           # 金额容差 (0.5%)
+  percentage_tolerance: 0.002      # 百分比容差 (0.2pp)
+  page_tolerance: 1                # 页码容差
+
+# OCR配置
+ocr:
+  enabled: true                    # 是否启用OCR
+  timeout_seconds: 120             # OCR超时时间
+  quality: "high"                  # OCR质量 (low/medium/high)
+
+# 日志配置
+logging:
+  level: "INFO"                    # 日志级别
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/dual_mode.log"       # 日志文件路径
+  max_size_mb: 100                 # 日志文件最大大小
+  backup_count: 5                  # 日志备份数量
+
+# 性能配置
+performance:
+  max_concurrent_jobs: 5           # 最大并发任务数
+  job_timeout_seconds: 300         # 任务超时时间
+  memory_limit_mb: 2048            # 内存限制
+
+# 缓存配置
+cache:
+  enabled: true                    # 是否启用缓存
+  ttl_seconds: 3600               # 缓存过期时间
+  max_size: 1000                  # 最大缓存条目数
+
+# 导出配置
+export:
+  formats: ["json", "csv", "xlsx"] # 支持的导出格式
+  max_items: 10000                # 最大导出条目数
+  include_evidence: true          # 是否包含证据
+
+# 安全配置
+security:
+  max_file_size_mb: 50            # 最大文件大小
+  allowed_extensions: [".pdf"]     # 允许的文件扩展名
+  scan_timeout_seconds: 30        # 安全扫描超时
