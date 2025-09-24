@@ -1,3 +1,4 @@
+# 后端与AI微服务依赖
 fastapi==0.116.2
 uvicorn[standard]==0.35.0
 python-multipart==0.0.20
@@ -6,3 +7,11 @@ pdfplumber>=0.11.0
 rapidfuzz>=3.9.0
 numpy>=1.26.0
 pytest>=8.0.0
+# AI抽取器微服务依赖
+httpx>=0.27.0
+pydantic>=2.0.0
+openai>=1.0.0
+volcengine>=1.0.0
+aiofiles>=23.0.0
+# 新增：requests用于后端规则R33110的同步HTTP调用AI抽取器
+requests>=2.32.0
