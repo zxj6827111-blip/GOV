@@ -1,18 +1,30 @@
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 .env
 .env.*
-node_modules/
-app/.next/
-app/out/
-.DS_Store
+.pytest_cache/
 pytest_cache/
-tiny.pdf
 
-# uploads
+# Node
+node_modules/
+.next/
+app/.next/
+dist/
+build/
+coverage/
+
+# Job outputs / uploads
 uploads/
+jobs/
+
+# Misc
+.DS_Store
+*.log
+app/out/
+tiny.pdf
 
 # test files
 test_*.py
