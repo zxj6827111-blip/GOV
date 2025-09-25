@@ -17,12 +17,51 @@ logger = logging.getLogger(__name__)
 
 
 class AIFindingsService:
-    """AI检查服务"""
+    """AI检查服务（规则约束版）"""
     
     def __init__(self, config: AnalysisConfig):
         self.config = config
         self.ai_client = ExtractorClient()  # 复用现有AI客户端
         self.ai_errors = []  # 聚合AI错误信息
+        # 预加载规则白名单（来自 YAML）并构建双向映射（Rxxx 与 V33-xxx）
+        self._rule_whitelist = set()
+        self._mapped_whitelist = set()
+        try:
+            import yaml, os
+            yaml_path = os.path.join("config", "rules", "rules_v3_3.yaml")
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            rules_dict = data.get("rules") or {}
+            base_ids = set(rules_dict.keys())
+            self._rule_whitelist = base_ids
+
+            # 构建双向映射集合
+            def _r_to_v33(code: str) -> str:
+                if isinstance(code, str) and code.startswith("R") and len(code) == 4 and code[1:].isdigit():
+                    return f"V33-{int(code[1:]):03d}"
+                return code
+            def _v33_to_r(code: str) -> str:
+                # 将 V33-001 -> R001
+                if isinstance(code, str) and code.startswith("V33-"):
+                    try:
+                        n = int(code.split("-", 1)[1])
+                        return f"R{n:03d}"
+                    except Exception:
+                        return code
+                return code
+
+            mapped = set()
+            for rid in base_ids:
+                mapped.add(rid)
+                mapped.add(_r_to_v33(rid))
+                mapped.add(_v33_to_r(rid))
+            # 去除空串
+            self._mapped_whitelist = {x for x in mapped if x}
+        except Exception as e:
+            logger.warning(f"加载规则白名单失败，将使用空白名单: {e}")
+            self._mapped_whitelist = set()
+        # 允许的严重级别集合
+        self._severity_set = {"info","low","medium","high","critical"}
     
     async def analyze(self, context: JobContext) -> List[IssueItem]:
         """执行AI分析"""
@@ -72,70 +111,53 @@ class AIFindingsService:
             return []
     
     def _build_prompt(self, context: JobContext) -> str:
-        """构建AI提示词"""
+        """构建AI提示词 - 规则约束模式"""
+        # 将白名单及其映射（Rxxx 与 V33-xxx）放入提示，指导AI使用一致的ID
+        wl = self._mapped_whitelist or self._rule_whitelist
+        rule_ids = sorted(list(wl)) if wl else []
+        rule_ids_json = json.dumps(rule_ids, ensure_ascii=False)
+        ocr_preview = (context.ocr_text or "")[:15000]
+        tables_preview = json.dumps(context.tables[:8], ensure_ascii=False, indent=2) if context.tables else "无表格数据"
+        
         prompt = f"""
-你是一个专业的政府预决算合规检查专家。请对以下预决算文档进行全面的合规性和一致性检查。
+你是政府预决算合规检查的专家。请仅依据“提供的规则白名单”对文档进行检查；若没有命中任何规则，返回空数组 []。
 
-## 文档信息
+严格约束：
+- 你只能输出规则白名单中的 rule_id，不允许生成白名单之外的 rule_id
+- 每条发现必须包含：rule_id、title、message、severity、page（数字>0）、evidence（文本证据，非空）
+- 严重程度仅限：critical、high、medium、low、info
+- 仅输出 JSON 数组，不要输出多余解释、不要包裹代码块
+- 若没有发现命中规则的问题，返回空数组 []
+
+规则白名单（仅可使用以下 rule_id）：
+{rule_ids_json}
+
+文档信息：
 - 文件路径: {context.pdf_path}
 - 页数: {context.pages}
-- OCR文本长度: {len(context.ocr_text or '') // 1000}K字符
+- OCR文本（截断预览）:
+{ocr_preview}
 
-## 检查要求
-请重点检查以下方面，发现问题时必须提供具体的页码和文本证据：
+表格数据（最多8个，截断预览）:
+{tables_preview}
 
-1. **九张表齐全性**: 检查是否包含完整的预决算表格
-2. **目录-正文一致性**: 检查目录与正文内容是否对应
-3. **表内勾稽关系**: 检查总表恒等式和明细汇总
-4. **预算vs决算差异**: 检查预算执行情况的合理性
-5. **比例和百分比**: 检查各项比例计算是否正确
-6. **年份和页码**: 检查年份标注和页码连续性
-7. **三公经费口径**: 检查三公经费统计口径一致性
-8. **政府采购口径**: 检查政府采购统计规范性
-9. **类款项编码**: 检查预算科目编码规范性
-
-## OCR文本内容
-{context.ocr_text[:10000] if context.ocr_text else "无OCR文本"}
-
-## 表格数据
-{json.dumps(context.tables[:5], ensure_ascii=False, indent=2) if context.tables else "无表格数据"}
-
-## 输出格式要求
-请严格按照以下JSON格式输出，每个问题必须包含所有必需字段：
-
-```json
+输出JSON数组示例（字段名固定，按需填充指标与建议；未命中则返回[]）：
 [
   {{
-    "rule_id": "AI-XXX-001",
+    "rule_id": "V33-002",
     "title": "问题标题",
     "message": "详细问题描述",
-    "severity": "critical|high|medium|low|info",
-    "page": 页码数字,
+    "severity": "high",
+    "page": 2,
     "section": "所在章节",
-    "table": "所在表格名称",
-    "evidence": "具体的文本证据摘录",
-    "metrics": {{
-      "expected": 期望值,
-      "actual": 实际值,
-      "diff": 差异值,
-      "pct": 百分比
-    }},
-    "suggestion": "改进建议",
-    "tags": ["标签1", "标签2"],
-    "category": "问题分类"
+    "table": "所在表格",
+    "evidence": "原文片段或数字摘录",
+    "metrics": {{"expected": 1, "actual": 0, "diff": 1}},
+    "suggestion": "修复建议",
+    "tags": ["标签A","标签B"]
   }}
 ]
-```
-
-## 重要约束
-1. 必须基于实际文本内容，不得编造问题
-2. 每个问题必须提供具体页码和文本证据
-3. 金额数据必须准确，不得估算
-4. 严重程度要合理评估
-5. 建议要具体可操作
-6. 如果没有发现问题，返回空数组 []
-
-请开始检查：
+仅输出数组本身。
 """
         return prompt
     
@@ -177,8 +199,9 @@ class AIFindingsService:
             if hasattr(self.ai_client, 'chat_completion'):
                 response = await self.ai_client.chat_completion(
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=self.config.ai_temperature,
-                    max_tokens=4000
+                    temperature=0.0,
+                    max_tokens=4000,
+                    top_p=1
                 )
                 return response.get("content", "")
             else:
@@ -309,7 +332,34 @@ class AIFindingsService:
                 })
                 logger.warning(f"因格式问题丢弃了 {discarded_count}/{len(raw_issues)} 个AI检测结果")
             
-            return issues
+            # 规则白名单+证据+页码 过滤（放宽：接受 Rxxx/V33-xxx 映射或 AI- 前缀）
+            filtered = []
+            for it in issues:
+                try:
+                    page = (it.location or {}).get("page", 0)
+                    has_evidence = bool(it.evidence) and bool(it.evidence[0].get("text") if isinstance(it.evidence[0], dict) else True)
+                    ok_sev = it.severity in self._severity_set
+
+                    rid = it.rule_id or ""
+                    # 允许 AI 自有前缀
+                    is_ai_pref = isinstance(rid, str) and rid.upper().startswith("AI-")
+                    # 白名单判定：白名单为空 或（在映射白名单内）或（AI-前缀）
+                    wl = self._mapped_whitelist or self._rule_whitelist
+                    ok_rule = (not wl) or (rid in wl) or is_ai_pref
+
+                    if ok_rule and ok_sev and isinstance(page, int) and page > 0 and has_evidence:
+                        filtered.append(it)
+                    else:
+                        self.ai_errors.append({
+                            "type": "post_filter_discard",
+                            "rule_id": rid,
+                            "page": page,
+                            "severity": it.severity,
+                            "reason": "rule_not_allowed_or_missing_page_or_evidence",
+                        })
+                except Exception as _:
+                    continue
+            return filtered
             
         except json.JSONDecodeError as e:
             logger.error(f"AI响应JSON解析失败: {e}")

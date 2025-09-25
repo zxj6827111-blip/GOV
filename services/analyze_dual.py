@@ -138,6 +138,25 @@ class DualModeAnalyzer:
             metrics.engine_rules_count = len(engine_rules)
             
             logger.info(f"Loaded {len(ai_rules)} AI rules and {len(engine_rules)} engine rules")
+            # 立即写入诊断，便于判断为何规则未执行
+            try:
+                from pathlib import Path
+                import os, json, time as _t
+                upload_root = Path(os.getenv("UPLOAD_DIR", "uploads")).resolve()
+                job_dir = upload_root / job_context.job_id
+                job_dir.mkdir(parents=True, exist_ok=True)
+                (job_dir / "diag_dual.json").write_text(json.dumps({
+                    "job_id": job_context.job_id,
+                    "stage": "rules_loaded",
+                    "ai_rules_count": len(ai_rules),
+                    "engine_rules_count": len(engine_rules),
+                    "timestamp": _t.time()
+                }, ensure_ascii=False, indent=2), encoding="utf-8")
+                # 保存提取文本预览，便于人工确认文本是否为空
+                preview = (job_context.ocr_text or "")[:2000]
+                (job_dir / "extracted_text.txt").write_text(preview, encoding="utf-8")
+            except Exception:
+                pass
             
             # 3. 真正并行执行分析，使用 asyncio.gather 处理异常和超时
             ai_started_at = time.time()
@@ -341,9 +360,48 @@ class DualModeAnalyzer:
                     "rule_started_at": rule_started_at,
                     "rule_done_at": rule_done_at,
                     "last_heartbeat": time.time(),
-                    "provider_stats": metrics.provider_stats
+                    "provider_stats": metrics.provider_stats,
+                    "counts": {
+                        "ai_rules": metrics.ai_rules_count,
+                        "engine_rules": metrics.engine_rules_count,
+                        "ai_findings": metrics.ai_findings_count,
+                        "rule_findings": metrics.rule_findings_count
+                    }
                 }
             })
+            # 同步将最终计数写入诊断
+            try:
+                from pathlib import Path
+                import os, json, time as _t
+                upload_root = Path(os.getenv("UPLOAD_DIR", "uploads")).resolve()
+                job_dir = upload_root / job_context.job_id
+                job_dir.mkdir(parents=True, exist_ok=True)
+                # 增加 AI 错误摘要，便于定位AI为何为空
+                ai_errs = []
+                try:
+                    if hasattr(job_context, "ai_errors") and isinstance(job_context.ai_errors, list):
+                        ai_errs = job_context.ai_errors
+                except Exception:
+                    ai_errs = []
+
+                (job_dir / "diag_dual.json").write_text(json.dumps({
+                    "job_id": job_context.job_id,
+                    "stage": "analysis_done",
+                    "ai_rules_count": metrics.ai_rules_count,
+                    "engine_rules_count": metrics.engine_rules_count,
+                    "ai_findings": metrics.ai_findings_count,
+                    "rule_findings": metrics.rule_findings_count,
+                    "elapsed_ms": {
+                        "ai": metrics.ai_elapsed_ms,
+                        "rule": metrics.rule_elapsed_ms,
+                        "merge": metrics.merge_elapsed_ms,
+                        "total": metrics.total_elapsed_ms
+                    },
+                    "ai_errors": ai_errs[:10],
+                    "timestamp": _t.time()
+                }, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception:
+                pass
             
             logger.info(f"Dual mode analysis completed in {metrics.total_elapsed_ms}ms")
             

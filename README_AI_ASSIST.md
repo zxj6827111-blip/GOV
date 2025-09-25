@@ -245,7 +245,7 @@ config.ai_assist_enabled = False
 
 ### 添加新的抽取任务
 
-1. 在 `ai_extractor_service.py` 中添加新的任务类型
+1. 在 `ai_extractor_service_v2.py` 中添加新的任务类型
 2. 更新 `ExtractRequest` 模型
 3. 实现对应的抽取逻辑
 4. 添加单元测试

@@ -26,7 +26,7 @@ e2e:
 	fi
 
 install:
-	pip install -r api/requirements.txt
+	pip install -r requirements.txt
 	npm --prefix app install
 	npx --yes playwright install --with-deps chromium
 

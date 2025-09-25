@@ -155,9 +155,9 @@ export default function IssueTabs({ result, onIssueClick }: IssueTabsProps) {
 
     return (
       <div className="space-y-4">
-        {issues.map((issue) => (
+        {issues.map((issue, idx) => (
           <div
-            key={issue.id}
+            key={`${issue.id}-${idx}`}
             className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => onIssueClick?.(issue)}
           >
@@ -201,11 +201,11 @@ export default function IssueTabs({ result, onIssueClick }: IssueTabsProps) {
             <h4 className="font-medium text-gray-900 mb-1">{issue.title}</h4>
             <p className="text-sm text-gray-600 mb-2">{issue.message}</p>
             
-            {issue.evidence.length > 0 && (
+            {(issue.evidence && issue.evidence.length > 0) && (
               <div className="text-xs text-gray-500">
                 <span className="font-medium">证据：</span>
-                {issue.evidence[0].text.substring(0, 100)}
-                {issue.evidence[0].text.length > 100 && "..."}
+                {(issue.evidence?.[0]?.text || "").substring(0, 100)}
+                {((issue.evidence?.[0]?.text || "").length > 100) && "..."}
               </div>
             )}
             
@@ -285,7 +285,10 @@ export default function IssueTabs({ result, onIssueClick }: IssueTabsProps) {
       return mergedIssues;
     };
     
-    const allIssues = getMergedIssues();
+    const allIssues = Array.from(
+      // 按 id 去重，避免重复 key 与重复展示
+      new Map(getMergedIssues().map(it => [it.id, it])).values()
+    );
 
     return (
       <div className="space-y-6">

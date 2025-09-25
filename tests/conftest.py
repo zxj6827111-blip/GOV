@@ -372,7 +372,7 @@ def setup_test_env(monkeypatch):
     test_env_vars = {
         "TESTING": "true",
         "AI_ASSIST_ENABLED": "true",
-        "AI_EXTRACTOR_URL": "http://localhost:9009/ai/extract/v1",
+        "AI_EXTRACTOR_URL": "http://localhost:9009",
         "LOG_LEVEL": "DEBUG"
     }
     

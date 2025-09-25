@@ -56,10 +56,17 @@ export default function UploadBox() {
              onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f); }} />
 
       {jobId && (
-        <button type="button" className="px-3 py-2 rounded bg-gray-800 text-white"
-                onClick={onAnalyze}>
-          开始解析（job {jobId.slice(0,8)}…）
-        </button>
+        <div className="flex items-center gap-3">
+          <button type="button" className="px-3 py-2 rounded bg-gray-800 text-white"
+                  onClick={onAnalyze}>
+            开始解析（job {jobId.slice(0,8)}…）
+          </button>
+          <button type="button" className="px-3 py-2 rounded border border-gray-300"
+                  onClick={() => window.open(`/api/reports/${jobId}`, "_blank")}
+                  title="打开该 Job 的离线模板对齐报告（Markdown）">
+            查看对齐报告
+          </button>
+        </div>
       )}
 
       <pre className="bg-gray-100 p-2 rounded text-sm whitespace-pre-wrap">{msg}</pre>

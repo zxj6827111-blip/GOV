@@ -106,7 +106,7 @@ export AI_EXTRACTOR_URL=http://127.0.0.1:9009/ai/extract/v1
 
 4. **启动AI服务**
 ```bash
-python3 ai_extractor_service.py
+python3 ai_extractor_service_v2.py
 ```
 
 5. **启动后端API**
@@ -257,7 +257,7 @@ python3 -m pytest tests/test_services.py -v
 python3 -m pytest --cov=. --cov-report=html
 
 # 运行冒烟测试
-python3 smoke_test.py
+  - 系统基本功能验证
 ```
 
 ### 测试分类
@@ -272,7 +272,7 @@ python3 smoke_test.py
   - React组件单元测试
   - 用户交互测试
 - **冒烟测试**：快速验证系统基本功能
-  - `smoke_test.py` - 系统基本功能验证
+  - 系统基本功能验证脚本
 
 ## 📊 性能优化
 

@@ -329,14 +329,31 @@ class RuleLoaderExt:
     async def load_rules_async(self, rules_version: str) -> List[Dict[str, Any]]:
         """异步接口：按版本加载规则并返回字典列表（供双模式分析器使用）"""
         try:
+            all_rules = []
+            
+            # 加载传统规则文件
             yaml_path = os.path.join(self.rules_dir, f"{rules_version}.yaml")
-            if not os.path.exists(yaml_path):
+            if os.path.exists(yaml_path):
+                extended_rules = self.load_rules_from_file(yaml_path)
+                all_rules.extend(extended_rules)
+            else:
                 logger.warning(f"Rules version '{rules_version}' not found at {yaml_path}, fallback to default")
                 extended_rules = self.load_default_rules()
+                all_rules.extend(extended_rules)
+            
+            # 加载AI规则文件
+            ai_rules_path = os.path.join(self.rules_dir, f"ai_rules_{rules_version}.yaml")
+            if os.path.exists(ai_rules_path):
+                logger.info(f"Loading AI rules from {ai_rules_path}")
+                ai_rules = self.load_rules_from_file(ai_rules_path)
+                all_rules.extend(ai_rules)
+                logger.info(f"Loaded {len(ai_rules)} AI rules")
             else:
-                extended_rules = self.load_rules_from_file(yaml_path)
+                logger.info(f"No AI rules file found: {ai_rules_path}")
+            
+            logger.info(f"Total loaded rules: {len(all_rules)}")
             # 转字典形式，便于analyze_dual按executor分离
-            return [r.to_dict() for r in extended_rules]
+            return [r.to_dict() for r in all_rules]
         except Exception as e:
             logger.error(f"Failed to load rules for version {rules_version}: {e}")
             # 失败时返回空列表，分析器会有降级逻辑

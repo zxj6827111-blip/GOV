@@ -1,0 +1,149 @@
+version: v3_3
+schema_version: '1.0'
+last_updated: '2025-09-24T11:32:36.082161'
+global_settings:
+  timeout: 120
+  max_issues: 50
+  enable_debug: false
+profiles:
+  default:
+    version: '1.0'
+    description: 默认Profile，包含所有基础规则
+    enabled_rules:
+    - '*'
+    disabled_rules: []
+  strict:
+    version: '1.0'
+    description: 严格模式，启用所有检查项
+    enabled_rules:
+    - '*'
+    disabled_rules: []
+    rule_overrides:
+      '*':
+        severity: error
+  minimal:
+    version: '1.0'
+    description: 最小模式，仅基础检查
+    enabled_rules:
+    - V33-001
+    - V33-002
+    - V33-003
+rules:
+  V33-001:
+    name: 封面年度单位检查
+    version: '1.0'
+    severity: warn
+    enabled: true
+    description: 检查封面年度和单位信息的完整性
+    aliases:
+    - 封面检查
+    - 年度检查
+    - 单位检查
+    parameters:
+      require_year: true
+      require_unit: true
+  V33-002:
+    name: 九张表齐全性检查
+    version: '1.0'
+    severity: error
+    enabled: true
+    description: 检查九张预算表是否齐全
+    aliases:
+    - 九张表
+    - 表格齐全性
+    parameters:
+      required_tables:
+      - 收入支出决算总表
+      - 收入决算表
+      - 支出决算表
+      - 财政拨款收入支出决算总表
+      - 一般公共预算财政拨款支出决算表
+      - 一般公共预算财政拨款基本支出决算表
+      - 一般公共预算财政拨款三公经费支出决算表
+      - 政府性基金预算财政拨款收入支出决算表
+      - 国有资本经营预算财政拨款支出决算表
+      min_required: 6
+  V33-003:
+    name: 页面文件阈值检查
+    version: '1.0'
+    severity: warn
+    enabled: true
+    description: 检查文件页数和大小是否合理
+    parameters:
+      max_pages: 200
+      max_file_size_mb: 50
+      min_pages: 5
+  V33-004:
+    name: 目录正文一致性检查
+    version: '1.0'
+    severity: error
+    enabled: true
+    description: 检查目录与正文内容是否对应
+    aliases:
+    - 目录一致性
+    - 正文对应
+    parameters:
+      max_page_diff: 2
+  V33-005:
+    name: 表内勾稽关系检查
+    version: '1.0'
+    severity: error
+    enabled: true
+    description: 检查总表恒等式和明细汇总
+    aliases:
+    - 勾稽关系
+    - 总计一致性
+    parameters:
+      tolerance: 0.01
+  V33-006:
+    name: 三公经费统计口径检查
+    version: '1.0'
+    severity: warn
+    enabled: true
+    description: 检查三公经费统计口径一致性
+    aliases:
+    - 三公经费
+    - 统计口径
+  V33-007:
+    name: 预算决算差异分析
+    version: '1.0'
+    severity: warn
+    enabled: true
+    description: 检查预算执行情况的合理性
+    aliases:
+    - 预决算差异
+    - 执行分析
+    parameters:
+      max_variance_percent: 20
+  V33-008:
+    name: 政府采购口径检查
+    version: '1.0'
+    severity: warn
+    enabled: true
+    description: 检查政府采购统计规范性
+    aliases:
+    - 政府采购
+    - 采购口径
+  V33-009:
+    name: 年份标注检查
+    version: '1.0'
+    severity: error
+    enabled: true
+    description: 检查年份标注和页码连续性
+    aliases:
+    - 年份检查
+    - 页码连续性
+    parameters:
+      check_continuity: true
+  V33-010:
+    name: 标点序号规范检查
+    version: '1.0'
+    severity: info
+    enabled: true
+    description: 检查标点符号和序号使用规范性
+    aliases:
+    - 标点规范
+    - 序号格式
+    parameters:
+      check_punctuation: true
+      check_numbering: true
