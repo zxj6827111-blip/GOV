@@ -17,7 +17,7 @@ interface Evidence {
   confidence?: number;
 }
 
-interface EnhancedIssueItem extends IssueItem {
+interface EnhancedIssueItem extends Omit<IssueItem, 'evidence'> {
   evidence?: Evidence[];
   attachments?: {
     screenshots?: string[];

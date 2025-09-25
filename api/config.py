@@ -28,9 +28,9 @@ class AppConfig:
         rules_file = Path(os.getenv("RULES_FILE", str(DEFAULT_RULES_FILE)))
         ai_assist_enabled = os.getenv("AI_ASSIST_ENABLED", "true").lower() == "true"
         ai_extractor_url = os.getenv("AI_EXTRACTOR_URL", "http://127.0.0.1:9009")
-        
+
         return cls(
             rules_file=rules_file,
             ai_assist_enabled=ai_assist_enabled,
-            ai_extractor_url=ai_extractor_url
+            ai_extractor_url=ai_extractor_url,
         )

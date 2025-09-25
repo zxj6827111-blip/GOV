@@ -173,17 +173,10 @@ export async function GET(
 
     if (!statusOk || !statusJson) {
       const fallback =
-        "# 模板对齐报告
-
-" +
-        `- Job ID: ${job_id}
-
-` +
-        "> 暂无报告内容：未找到离线报告文件，且状态接口不可用或尚未产出结果。
-
-" +
-        "请稍后重试，或返回结果页等待分析完成后再查看。
-";
+        "# 模板对齐报告\n\n" +
+        `- Job ID: ${job_id}\n\n` +
+        "> 暂无报告内容：未找到离线报告文件，且状态接口不可用或尚未产出结果。\n\n" +
+        "请稍后重试，或返回结果页等待分析完成后再查看。\n";
       return new Response(fallback, {
         status: 200,
         headers: { "Content-Type": "text/markdown; charset=utf-8" },

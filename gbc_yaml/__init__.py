@@ -142,7 +142,7 @@ class _Parser:
         return self._parse_map(current_indent)
 
     def _parse_scalar(self, token: str) -> Any:
-        if token.startswith("\"") and token.endswith("\""):
+        if token.startswith('"') and token.endswith('"'):
             return token[1:-1]
         if token.startswith("'") and token.endswith("'"):
             return token[1:-1]

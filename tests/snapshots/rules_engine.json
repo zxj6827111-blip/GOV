@@ -1,0 +1,48 @@
+[
+  {
+    "rule_id": "TABLE_001",
+    "rule_name": "缺失必要表格",
+    "is_valid": false,
+    "severity": "error",
+    "message": "缺失1张必要表格",
+    "evidence": [
+      {
+        "missing_table": "一般公共预算转移支付分地区情况表"
+      }
+    ],
+    "page_numbers": []
+  },
+  {
+    "rule_id": "EXPENSE_001",
+    "rule_name": "三公经费口径一致性",
+    "is_valid": true,
+    "severity": "info",
+    "message": "三公经费相关金额表述一致",
+    "evidence": [],
+    "page_numbers": [
+      4
+    ]
+  },
+  {
+    "rule_id": "YEAR_001",
+    "rule_name": "年份一致性",
+    "is_valid": true,
+    "severity": "info",
+    "message": "文档中年份使用一致：2023",
+    "evidence": [],
+    "page_numbers": [
+      2
+    ]
+  },
+  {
+    "rule_id": "TOC_001",
+    "rule_name": "目录存在性",
+    "is_valid": true,
+    "severity": "info",
+    "message": "文档包含目录页面",
+    "evidence": [],
+    "page_numbers": [
+      1
+    ]
+  }
+]

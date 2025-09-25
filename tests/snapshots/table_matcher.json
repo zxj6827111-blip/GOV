@@ -1,0 +1,31 @@
+{
+  "一般公共预算收入表": {
+    "standard_name": "一般公共预算财政拨款基本支出决算表",
+    "confidence": 48.0,
+    "match_type": "keyword",
+    "category": "basic_expenditure",
+    "matched_keywords": 3
+  },
+  "一般公共预算支出表（按功能科目）": {
+    "standard_name": "一般公共预算财政拨款基本支出决算表",
+    "confidence": 64.0,
+    "match_type": "keyword",
+    "category": "basic_expenditure",
+    "matched_keywords": 4
+  },
+  "2023年度政府性基金预算收入执行情况表": {
+    "standard_name": "政府性基金预算财政拨款收入支出决算表",
+    "confidence": 64.0,
+    "match_type": "keyword",
+    "category": "government_fund",
+    "matched_keywords": 4
+  },
+  "社会保险基金预算收支情况表（草案）": null,
+  "国有资本经营预算收入表说明": {
+    "standard_name": "国有资本经营预算财政拨款支出决算表",
+    "confidence": 64.0,
+    "match_type": "keyword",
+    "category": "state_capital",
+    "matched_keywords": 4
+  }
+}
