@@ -15,7 +15,7 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 # ==================== 配置 ====================
-AI_EXTRACTOR_URL = os.getenv("AI_EXTRACTOR_URL", "http://127.0.0.1:9009/ai/extract/v1")
+AI_EXTRACTOR_URL = os.getenv("AI_EXTRACTOR_URL", "http://127.0.0.1:9009")
 AI_ASSIST_ENABLED = os.getenv("AI_ASSIST_ENABLED", "true").lower() == "true"
 
 # 超时和重试配置
@@ -26,11 +26,19 @@ RETRY_DELAY = 1.0
 @dataclass
 class ExtractorConfig:
     """抽取器配置"""
-    url: str = AI_EXTRACTOR_URL
+    base_url: str = AI_EXTRACTOR_URL
     enabled: bool = AI_ASSIST_ENABLED
     timeout: float = REQUEST_TIMEOUT
     max_retries: int = MAX_RETRIES
     retry_delay: float = RETRY_DELAY
+    
+    @property
+    def url(self) -> str:
+        """获取完整的API URL"""
+        if self.base_url.endswith('/ai/extract/v1'):
+            return self.base_url
+        else:
+            return f"{self.base_url.rstrip('/')}/ai/extract/v1"
 
 class ExtractorClient:
     """AI抽取器客户端"""
@@ -102,7 +110,7 @@ class ExtractorClient:
                 
         # 所有重试都失败
         logger.error(f"AI抽取最终失败: {last_exception}")
-        raise last_exception
+        raise last_exception or Exception("AI抽取失败：未知错误")
     
     async def _single_call(self, section_text: str, doc_hash: str) -> List[Dict[str, Any]]:
         """单次调用"""
@@ -176,7 +184,7 @@ class ExtractorClient:
             
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                health_url = self.config.url.replace("/ai/extract/v1", "/health")
+                health_url = f"{self.config.base_url.rstrip('/')}/health"
                 response = await client.get(health_url)
                 return response.status_code == 200
                 
@@ -229,7 +237,7 @@ def update_config(
     config = _default_client.config
     
     if url is not None:
-        config.url = url
+        config.base_url = url
     if enabled is not None:
         config.enabled = enabled
     if timeout is not None:

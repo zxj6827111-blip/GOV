@@ -1,0 +1,49 @@
+# AI微服务 Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libffi-dev \
+    libssl-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制AI服务相关的依赖
+COPY requirements.txt .
+
+# 安装Python依赖
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制AI服务源码
+COPY ai_extractor_service.py .
+COPY providers/ ./providers/
+COPY config/ ./config/
+COPY services/ai_client.py ./services/
+
+# 创建缓存目录
+RUN mkdir -p /app/cache /app/logs
+
+# 设置环境变量
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV PORT=9009
+ENV HOST=0.0.0.0
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:9009/health || exit 1
+
+# 暴露端口
+EXPOSE 9009
+
+# 创建非root用户
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# 启动AI微服务
+CMD ["uvicorn", "ai_extractor_service:app", "--host", "0.0.0.0", "--port", "9009"]

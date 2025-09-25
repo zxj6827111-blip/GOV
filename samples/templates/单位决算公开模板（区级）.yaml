@@ -1,0 +1,145 @@
+template:
+  name: 附件2-2：单位决算公开模板（区级）
+  key: unit_decision_template_district_v1
+  profile: 决算公开
+  scope:
+    org_level: 区级单位
+    applies_to: [决算公开]
+  metadata:
+    source_upload_job_id: 17ec68d5dc42c6eace2675dc38f3442c
+    base_unit: 万元
+    numeric_tolerance:
+      amount_equal_tolerance_in_万元: 0.5
+      ratio_percentage_tolerance: 0.1
+    notes:
+      - 本模板适配区级“单位”公开样式，章节标题可能较“部门”更简短
+      - 若无政府性基金/国资经营预算，应出现空表或等效说明
+
+titles_and_aliases:
+  required_tables:
+    - name: 收入支出决算总表
+      aliases: [单位收支决算总表, 收支决算总表, 收入支出决算总表]
+    - name: 收入决算表
+      aliases: [单位收入决算表, 收入决算表]
+    - name: 支出决算表
+      aliases: [单位支出决算表, 支出决算表]
+    - name: 财政拨款收入支出决算总表
+      aliases: [财政拨款收支决算总表, 财政拨款收入支出决算总表]
+    - name: 一般公共预算财政拨款支出决算表
+      aliases: [一般公共预算财政拨款支出决算表, 一般公共预算支出决算表]
+    - name: 一般公共预算财政拨款基本支出决算表
+      aliases: [一般公共预算财政拨款基本支出决算表, 基本支出决算表]
+    - name: 一般公共预算财政拨款“三公”经费支出决算表
+      aliases: [财政拨款“三公”经费支出决算表, 三公经费支出决算表, “三公”经费支出决算表]
+    - name: 政府性基金预算财政拨款收入支出决算表
+      aliases: [政府性基金预算财政拨款收入支出决算表, 政府性基金决算表]
+      conditional: 若无此预算
+    - name: 国有资本经营预算财政拨款收入支出决算表
+      aliases: [国有资本经营预算财政拨款收入支出决算表, 国有资本经营预算财政拨款支出决算表, 国有资本经营支出决算表]
+      conditional: 若无此预算
+
+explanations_mapping:
+  # “单位”场景下常见更简标题，仍与规则 checks 对齐
+  income_expense_total:
+    table: 收入支出决算总表
+    explanation_titles: [总体情况, 收支总体情况说明, 收入支出总体情况]
+    checks:
+      - type: identity
+        desc: 支出列总计 = 本年支出合计 + 结余分配 + 年末结转和结余
+      - type: match_value
+        table_field: 支出列.总计
+        explanation_field: 年度收入支出总计
+  income_sheet:
+    table: 收入决算表
+    explanation_titles: [收入决算情况说明, 收入情况说明, 收入情况]
+    checks:
+      - { type: match_value, table_field: 本年收入合计, explanation_field: 本年收入合计 }
+      - { type: match_value, table_field: 财政拨款收入, explanation_field: 财政拨款收入 }
+      - { type: percent_compare, numerator: 财政拨款收入, denominator: 本年收入合计, explanation_percent_field: 财政拨款收入占比 }
+  expense_sheet:
+    table: 支出决算表
+    explanation_titles: [支出决算情况说明, 支出情况说明, 支出情况]
+    checks:
+      - { type: match_value, table_field: 本年支出合计, explanation_field: 本年支出合计 }
+      - { type: match_value, table_field: 基本支出, explanation_field: 基本支出 }
+      - { type: match_value, table_field: 项目支出, explanation_field: 项目支出 }
+      - type: percent_compare_group
+        denominator: 本年支出合计
+        fields:
+          - { name: 基本支出, explanation_percent_field: 基本支出占比 }
+          - { name: 项目支出, explanation_percent_field: 项目支出占比 }
+  fin_grant_total:
+    table: 财政拨款收入支出决算总表
+    explanation_titles: [财政拨款总体情况说明, 财政拨款总体情况]
+    checks:
+      - { type: match_value, table_field: 支出列.总计, explanation_field: 总计 }
+  gen_budget_fingrant:
+    table: 一般公共预算财政拨款支出决算表
+    explanation_blocks:
+      overall: （一）总体情况
+      structure: （二）结构情况
+      details: （三）具体情况
+    checks:
+      - { type: match_value, table_field: 合计, explanation_block: overall, explanation_field: 支出决算合计 }
+      - { type: percent_compare, numerator: 合计, denominator: 支出决算表.本年支出合计, explanation_block: overall, explanation_percent_field: 占比 }
+      - { type: functional_class_structure_compare, code_field: 功能分类科目编码, value_field: 金额, class_len: 3, explanation_block: structure }
+      - { type: budget_vs_final_compare_in_text, code_field: 功能分类科目编码, budget_field: 年初预算数, final_field: 决算数, explanation_block: details, require_keywords_any: [较上年, 同比, 增加, 减少, 原因, 变动, 波动] }
+  basic_expense:
+    table: 一般公共预算财政拨款基本支出决算表
+    explanation_titles: [基本支出情况说明, 基本支出情况]
+    checks:
+      - { type: identity, expression: 人员经费合计 + 公用经费合计 == 一般公共预算财政拨款基本支出 }
+      - { type: explanation_items_alignment, explanation_items: [工资福利支出, 公用经费, 对个人和家庭的补助, 资本性支出] }
+  sangong:
+    table: 一般公共预算财政拨款“三公”经费支出决算表
+    explanation_titles: [“三公”经费情况说明, 三公经费总体情况说明]
+    checks:
+      - type: match_value_pair
+        pairs:
+          - { table_field: 合计预算数, explanation_field: 年初预算 }
+          - { table_field: 合计决算数, explanation_field: 支出决算 }
+      - type: percent_compare_group
+        denominator: 合计决算数
+        fields:
+          - { name: 因公出国（境）费, explanation_percent_field: 因公出国（境）费占比 }
+          - { name: 公务用车购置及运行费, explanation_percent_field: 公务用车购置及运行费占比 }
+          - { name: 公务接待费, explanation_percent_field: 公务接待费占比 }
+  gov_fund:
+    table: 政府性基金预算财政拨款收入支出决算表
+    conditional: 若单位无此预算，应出现空表说明
+    explanation_titles: [政府性基金预算财政拨款收入支出决算情况说明, 政府性基金情况说明]
+    checks:
+      - { type: empty_table_statement_required, explanation_phrases_any: [本年度无政府性基金预算, 空表说明, 无相关预算] }
+  state_capital:
+    table: 国有资本经营预算财政拨款收入支出决算表
+    conditional: 若单位无此预算，应出现空表说明
+    explanation_titles: [国有资本经营预算财政拨款收入支出决算情况说明, 国资经营情况说明]
+    checks:
+      - { type: empty_table_statement_required, explanation_phrases_any: [本年度无国有资本经营预算, 空表说明, 无相关预算] }
+
+format_and_units:
+  money_unit_detection:
+    patterns: [元, 万元, 亿元]
+    base_unit: 万元
+    conversions: { 元: 0.0001, 万元: 1, 亿元: 10000 }
+  text_normalization:
+    unify_full_half_width: true
+    normalize_punctuation_zh: true
+    remove_whitespace_variants: true
+
+evidence_and_outputs:
+  capture:
+    include_page_number: true
+    include_text_snippet: true
+    include_bbox_screenshot: true
+  export_formats: [JSON]
+
+compliance_expectations:
+  structure_check:
+    min_tables: 9
+  rules_should_not_trigger:
+    - V33-003  # 页数/大小阈值
+    - V33-005  # 合计与分项和不一致
+    - V33-108  # 三公 表↔文本不一致
+  notes:
+    - 模板阶段可含“XX/××”占位；正式公开文件需替换为真实值

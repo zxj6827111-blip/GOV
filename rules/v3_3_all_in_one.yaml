@@ -1,0 +1,440 @@
+# GovBudgetChecker V3.3 规则集配置文件
+# 多文档YAML格式，包含元数据、表格别名和完整的检查规则
+---
+# 文档1：元数据配置
+meta:
+  version: v3_3_r2
+  generated_at: "2024-01-20T10:30:00Z"
+  description: "政府预算决算公开文件检查规则集V3.3"
+  profiles: 
+    - "预算公开"
+    - "决算公开"
+  author: "GovBudgetChecker Engine"
+  contact: "support@govbudgetchecker.com"
+  changelog:
+    - version: "v3_3_r1"
+      date: "2024-01-15"
+      changes: ["初始规则集", "九张表基础检查", "简单一致性验证"]
+    - version: "v3_3_r2" 
+      date: "2024-01-20"
+      changes: ["增强数字解析", "完善证据采样", "支持容差配置", "优化误报控制"]
+
+---
+# 文档2：九张表标准名称及别名配置
+tables_aliases:
+  一般公共预算收入表:
+    standard_name: "一般公共预算收入表"
+    aliases: 
+      - "一般公共预算收入执行情况表"
+      - "公共预算收入表"
+      - "一般公共预算收入决算表"
+      - "收入执行情况表"
+      - "收入决算表"  # 新增常见简称
+      - "一般预算收入表"  # 新增简化表述
+    keywords: ["收入", "预算", "一般公共"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  一般公共预算支出表:
+    standard_name: "一般公共预算支出表" 
+    aliases:
+      - "一般公共预算支出执行情况表"
+      - "公共预算支出表"
+      - "一般公共预算支出决算表"
+      - "支出执行情况表"
+      - "支出决算表"  # 新增常见简称
+      - "一般预算支出表"  # 新增简化表述
+      - "支出情况表"  # 新增常见变形
+    keywords: ["支出", "预算", "一般公共"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  一般公共预算财政拨款支出表:
+    standard_name: "一般公共预算财政拨款支出表"
+    aliases:
+      - "财政拨款支出表"
+      - "一般公共预算拨款支出表"
+      - "财政拨款支出执行情况表"
+      - "拨款支出表"
+    keywords: ["财政拨款", "支出", "预算"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  政府性基金预算收入表:
+    standard_name: "政府性基金预算收入表"
+    aliases:
+      - "政府性基金收入表"
+      - "基金预算收入表"
+      - "政府性基金收入执行情况表"
+      - "基金收入表"
+    keywords: ["政府性基金", "收入", "基金预算"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  政府性基金预算支出表:
+    standard_name: "政府性基金预算支出表"
+    aliases:
+      - "政府性基金支出表"
+      - "基金预算支出表"
+      - "政府性基金支出执行情况表"
+      - "基金支出表"
+    keywords: ["政府性基金", "支出", "基金预算"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  国有资本经营预算收入表:
+    standard_name: "国有资本经营预算收入表"
+    aliases:
+      - "国有资本经营收入表"
+      - "国资预算收入表"
+      - "国有资本收入表"
+      - "国有资本经营收入执行情况表"
+    keywords: ["国有资本", "经营预算", "收入"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  国有资本经营预算支出表:
+    standard_name: "国有资本经营预算支出表"
+    aliases:
+      - "国有资本经营支出表"
+      - "国资预算支出表"
+      - "国有资本支出表"
+      - "国有资本经营支出执行情况表"
+    keywords: ["国有资本", "经营预算", "支出"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  社会保险基金预算收入表:
+    standard_name: "社会保险基金预算收入表"
+    aliases:
+      - "社保基金收入表"
+      - "社会保险收入表"
+      - "社保预算收入表"
+      - "社会保险基金收入执行情况表"
+    keywords: ["社会保险", "基金预算", "收入", "社保"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+    
+  社会保险基金预算支出表:
+    standard_name: "社会保险基金预算支出表"
+    aliases:
+      - "社保基金支出表"
+      - "社会保险支出表"
+      - "社保预算支出表"
+      - "社会保险基金支出执行情况表"
+    keywords: ["社会保险", "基金预算", "支出", "社保"]
+    required: true
+    profile: ["预算公开", "决算公开"]
+
+---
+# 文档3：检查规则定义
+checks:
+  - id: "V33-001"
+    name: "目录与正文顺序一致性检查"
+    desc: "验证目录中表格名称、页码与正文中实际出现的顺序和位置是否一致"
+    profile: ["预算公开", "决算公开"]
+    severity: "error"
+    category: "结构一致性"
+    inputs:
+      toc_anchor: 
+        pattern: "(目录|目\\s*录|CONTENTS)"
+        flags: ["IGNORECASE", "MULTILINE"]
+      table_title_pattern:
+        pattern: "(表\\d+[：:]?\\s*(.{1,50}表))"
+        flags: ["MULTILINE"]
+      page_number_pattern:
+        pattern: "(\\d+)"
+        context: "页码提取"
+    logic: |
+      1. 提取目录区域所有表格条目和页码
+      2. 遍历正文，按页码顺序提取实际表格标题
+      3. 比较目录顺序与正文出现顺序
+      4. 验证页码对应关系的准确性
+      5. 检查是否存在目录中有但正文缺失的表格
+      6. 检查是否存在正文中有但目录缺失的表格
+    evidence:
+      type: "comparison_table"
+      strategy: "side_by_side"
+      fields: ["toc_entry", "actual_title", "toc_page", "actual_page", "status"]
+      max_items: 20
+      sort_by: "toc_page"
+      
+  - id: "V33-002"
+    name: "九张表齐全性检查"
+    desc: "检查九张标准表格是否齐全，支持别名匹配和模糊识别"
+    profile: ["预算公开", "决算公开"]
+    severity: "error"
+    category: "完整性检查"
+    inputs:
+      required_tables: "tables_aliases"  # 引用前面定义的别名配置
+      title_extraction:
+        pattern: "(表\\d+[：:]?\\s*(.{1,50}表))"
+        flags: ["MULTILINE"]
+      fuzzy_threshold: 0.8  # 模糊匹配阈值
+    logic: |
+      1. 加载九张标准表格配置和别名列表
+      2. 提取文档中所有表格标题
+      3. 对每个标准表格进行三级匹配：
+         a) 精确匹配：标题完全匹配标准名或别名
+         b) 模糊匹配：使用编辑距离算法匹配
+         c) 关键词匹配：检查标题是否包含关键词组合
+      4. 标记匹配成功的表格和匹配方式
+      5. 列出缺失的表格清单
+    evidence:
+      type: "checklist_with_matches"
+      strategy: "table_coverage"
+      fields: ["standard_name", "found_title", "match_type", "confidence", "page_number"]
+      highlight_missing: true
+      show_alternatives: true
+      
+  - id: "V33-003"
+    name: "总表恒等式验证"
+    desc: "验证各预算表格中的总计数据是否满足会计恒等式，支持容差配置"
+    profile: ["预算公开", "决算公开"]
+    severity: "warning"
+    category: "数据一致性"
+    inputs:
+      target_tables: 
+        - "一般公共预算收入表"
+        - "一般公共预算支出表"
+        - "政府性基金预算收入表"
+        - "政府性基金预算支出表"
+      total_patterns:
+        - pattern: "(合计|总计|小计)\\s*[：:]?\\s*([\\d,，.．]+)"
+          flags: ["MULTILINE"]
+        - pattern: "(总\\s*计)\\s*[：:]?\\s*([\\d,，.．]+)"
+          flags: ["MULTILINE"]
+      tolerance:
+        relative: 0.005  # 0.5%相对误差
+        absolute: 1.0    # 1元绝对误差
+    logic: |
+      1. 定位各个预算表格区域
+      2. 提取每个表格的"合计"、"总计"行数据
+      3. 使用鲁棒数字解析器解析金额数字
+      4. 验证收入总计 = 支出总计（在容差范围内）
+      5. 验证子项目加总 = 总计数（内部一致性）
+      6. 记录不平衡的差额和可能原因
+    evidence:
+      type: "balance_sheet"
+      strategy: "equation_verification"
+      fields: ["table_name", "total_amount", "sub_items_sum", "difference", "within_tolerance"]
+      tolerance_info: true
+      calculation_details: true
+      
+  - id: "V33-004"
+    name: "三公经费口径一致性检查"
+    desc: "验证三公经费在预算表格与文字说明中的金额和口径是否一致"
+    profile: ["预算公开", "决算公开"]
+    severity: "warning"
+    category: "口径一致性"
+    inputs:
+      sangong_keywords: ["三公经费", "三公", "公务接待", "公务用车", "因公出国"]
+      table_extraction:
+        pattern: "(三公经费|公务接待费|公务用车.*费|因公出国.*费)\\s*[：:]?\\s*([\\d,，.．]+)"
+        flags: ["IGNORECASE", "MULTILINE"]
+      text_explanation:
+        anchor_pattern: "(三公经费说明|经费说明|说明)"
+        content_window: 500  # 说明区域前后500字符
+    logic: |
+      1. 在预算表格中定位三公经费相关行项
+      2. 提取表格中的三公经费各项金额
+      3. 在文字说明部分搜索三公经费说明段落
+      4. 提取说明中提到的各项金额数据
+      5. 比较表格数据与说明数据的一致性
+      6. 检查分项加总是否等于总额
+      7. 验证口径描述是否对应（如是否包含年中调整等）
+    evidence:
+      type: "cross_reference"
+      strategy: "table_vs_text"
+      fields: ["item_name", "table_amount", "text_amount", "difference", "explanation_snippet"]
+      show_context: true
+      max_snippet_length: 200
+      
+  - id: "V33-005"
+    name: "机关运行经费一致性检查"
+    desc: "验证机关运行经费在不同表格和说明中的数据一致性"
+    profile: ["预算公开", "决算公开"]
+    severity: "warning"
+    category: "口径一致性"
+    inputs:
+      keywords: ["机关运行经费", "行政运行", "机关事业单位基本支出", "日常公用经费"]
+      extraction_pattern:
+        pattern: "(机关运行经费|行政运行.*?经费|日常公用经费)\\s*[：:]?\\s*([\\d,，.．]+)"
+        flags: ["IGNORECASE", "MULTILINE"]
+      explanation_section:
+        anchor: "(机关运行经费说明|运行经费|经费说明)"
+        window: 300
+    logic: |
+      1. 在支出表格中搜索机关运行经费相关科目
+      2. 提取表格中的运行经费金额数据
+      3. 在说明文字中定位运行经费说明段落
+      4. 提取说明中的金额信息和口径解释
+      5. 验证表格与说明的数据一致性
+      6. 检查口径是否明确（如是否包含特定范围）
+      7. 对比预算与执行的差异说明
+    evidence:
+      type: "consistency_report"
+      strategy: "multi_source_validation"
+      fields: ["source_type", "amount", "description", "page_reference"]
+      include_definitions: true
+      
+  - id: "V33-006"
+    name: "政府采购金额口径一致性检查"
+    desc: "验证政府采购金额在预算表与说明文字中的一致性，包括口径范围"
+    profile: ["预算公开", "决算公开"]
+    severity: "warning"
+    category: "口径一致性"
+    inputs:
+      procurement_keywords: ["政府采购", "采购预算", "政府购买", "集中采购", "分散采购"]
+      amount_pattern:
+        pattern: "(政府采购.*?金额|采购.*?预算|采购.*?支出)\\s*[：:]?\\s*([\\d,，.．]+)"
+        flags: ["IGNORECASE", "MULTILINE"]
+      explanation_anchor:
+        pattern: "(政府采购说明|采购情况说明|采购预算说明)"
+        window: 400
+    logic: |
+      1. 在预算支出表中定位政府采购相关科目
+      2. 提取采购预算或执行金额
+      3. 在文字说明中查找采购情况说明
+      4. 提取说明中的采购金额和范围描述
+      5. 验证金额数据的一致性
+      6. 检查采购口径是否一致（如是否包含服务采购等）
+      7. 分析采购方式分类是否合理
+    evidence:
+      type: "procurement_analysis"
+      strategy: "scope_verification"
+      fields: ["category", "budgeted_amount", "explained_amount", "scope_description", "consistency"]
+      
+  - id: "V33-007"
+    name: "年份一致性检查"
+    desc: "检查封面、目录、表格标题、说明文字中的年份信息是否一致"
+    profile: ["预算公开", "决算公开"]
+    severity: "error"
+    category: "基础信息一致性"
+    inputs:
+      year_patterns:
+        - pattern: "(\\d{4})年"
+          context: "中文年份"
+        - pattern: "(\\d{4})"
+          context: "数字年份"
+          constraints: [">=1990", "<=2030"]
+      section_anchors:
+        cover: ["封面", "标题页", "首页"]
+        toc: ["目录", "目\\s*录"]
+        tables: ["表\\d+", "附表"]
+        explanations: ["说明", "情况说明", "编制说明"]
+    logic: |
+      1. 从封面提取主要年份信息
+      2. 从目录标题中提取年份
+      3. 遍历各表格标题，提取年份信息
+      4. 在说明文字中提取年份引用
+      5. 对比各部分年份的一致性
+      6. 识别异常年份（如错误引用上年数据）
+      7. 验证预算年度与决算年度的对应关系
+    evidence:
+      type: "year_tracking"
+      strategy: "section_comparison"
+      fields: ["section", "found_years", "primary_year", "anomalies", "context_snippet"]
+      highlight_inconsistencies: true
+      
+  - id: "V33-008"
+    name: "标点符号和序号样式一致性检查"
+    desc: "检查文档中标点符号使用和序号样式的规范性与一致性"
+    profile: ["预算公开", "决算公开"]
+    severity: "notice"
+    category: "格式规范性"
+    inputs:
+      punctuation_patterns:
+        colon_usage: 
+          pattern: "([：:])\\s*"
+          context: "冒号使用"
+        parentheses: 
+          pattern: "([（(]\\d+[）)])"
+          context: "序号括号"
+        numbering_style:
+          pattern: "([一二三四五六七八九十]、|\\d+[.．、]|[一二三四五六七八九十]+\\.|\\(\\d+\\))"
+          context: "序号样式"
+      consistency_check:
+        min_samples: 3  # 至少3个样本才进行一致性检查
+    logic: |
+      1. 扫描文档，提取所有序号和标点使用实例
+      2. 按类型分类（中文序号、阿拉伯数字、括号序号等）
+      3. 统计各种样式的使用频率
+      4. 识别同一层级使用不同样式的情况
+      5. 检查标点符号使用是否规范（如中英文标点混用）
+      6. 标记格式不一致的区域
+    evidence:
+      type: "style_analysis"
+      strategy: "pattern_frequency"
+      fields: ["pattern_type", "examples", "frequency", "consistency_score", "page_locations"]
+      show_samples: true
+      max_examples: 10
+      
+  - id: "V33-009"
+    name: "文本-数字差异超阈值报警"
+    desc: "检测OCR文本识别与数字解析的差异，当误差超过阈值时报警"
+    profile: ["预算公开", "决算公开"]
+    severity: "warning"
+    category: "数据质量"
+    inputs:
+      ocr_confidence_threshold: 0.7  # OCR置信度阈值
+      number_extraction:
+        pattern: "([\\d,，.．]+)"
+        context_window: 50  # 数字前后文字窗口
+      validation_methods:
+        - "checksum_validation"      # 校验和验证
+        - "format_consistency"       # 格式一致性
+        - "range_reasonableness"     # 数值合理性
+      alert_thresholds:
+        confidence_drop: 0.3         # 置信度下降超过30%
+        parse_failure_rate: 0.1      # 解析失败率超过10%
+    logic: |
+      1. 对每个识别的数字检查OCR置信度
+      2. 使用多种方法验证数字的准确性
+      3. 计算文本区域的整体质量得分
+      4. 识别可能的OCR错误（如0与O混淆）
+      5. 当误差指标超过阈值时触发报警
+      6. 提供人工复核建议和可能的修正方案
+    evidence:
+      type: "quality_report"
+      strategy: "confidence_analysis"
+      fields: ["number_text", "parsed_value", "confidence", "validation_status", "suggested_action"]
+      include_context: true
+      flag_low_confidence: true
+      
+  - id: "V33-010"
+    name: "缺章缺表定位检查"
+    desc: "精确定位缺失的章节和表格，提供页码坐标和截图证据"
+    profile: ["预算公开", "决算公开"]
+    severity: "error"
+    category: "完整性检查"
+    inputs:
+      required_sections:
+        - "预算收支情况说明"
+        - "三公经费说明"
+        - "机关运行经费说明"
+        - "政府采购情况说明"
+        - "预算绩效情况说明"
+      required_tables: "tables_aliases"  # 引用九张表配置
+      structure_patterns:
+        chapter: "(第[一二三四五六七八九十]+章|第\\d+章|[一二三四五六七八九十]+、)"
+        section: "([一二三四五六七八九十]+\\.|\\d+\\.|\\([一二三四五六七八九十]+\\))"
+      screenshot_config:
+        margin: 50        # 截图边距（像素）
+        highlight_color: "red"
+        annotation: true
+    logic: |
+      1. 基于规范要求建立完整的章节表格清单
+      2. 逐页扫描，识别实际存在的章节和表格
+      3. 对比标准清单与实际内容，标记缺失项
+      4. 对每个缺失项，确定应该出现的大致位置
+      5. 在预期位置附近截取页面截图
+      6. 生成缺失清单，包含精确的页码和坐标信息
+      7. 对缺失的严重程度进行分级
+    evidence:
+      type: "missing_items_report"
+      strategy: "location_based"
+      fields: ["missing_item", "item_type", "expected_location", "severity", "screenshot_path"]
+      generate_screenshots: true
+      include_coordinates: true
+      group_by_severity: true

@@ -1,0 +1,18 @@
+version: 1
+templates:
+  - key: dept_decision_template_v1
+    name: 附件2：部门决算模板
+    path: samples/templates/部门决算模板.yaml
+    profile: 决算公开
+    scope:
+      org_level: 区级部门
+      applies_to: [决算公开]
+    aliases: [部门决算模板, 附件2, 部门模板, 部门决算, 部门决算公开]
+  - key: unit_decision_template_district_v1
+    name: 附件2-2：单位决算公开模板（区级）
+    path: samples/templates/单位决算公开模板（区级）.yaml
+    profile: 决算公开
+    scope:
+      org_level: 区级单位
+      applies_to: [决算公开]
+    aliases: [单位决算公开模板, 附件2-2, 单位模板, 单位决算, 单位决算公开]

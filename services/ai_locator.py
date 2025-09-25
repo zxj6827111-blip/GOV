@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
 from schemas.issues import JobContext, IssueItem
-from services.ai_client import AIClient
+from services.ai_client_v2 import ai_client_v2, AIError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class AILocator:
     """AI 定位器"""
     
     def __init__(self):
-        self.ai_client = AIClient()
+        self.ai_client = ai_client_v2
     
     async def enhance_finding(self, 
                              job_context: JobContext,
@@ -45,7 +45,7 @@ class AILocator:
             prompt = self._generate_locator_prompt(finding, job_context)
             
             # 调用 AI
-            response = await self.ai_client.chat(
+            response = await self.ai_client.chat_completion(
                 messages=[
                     {
                         "role": "system",
@@ -61,7 +61,7 @@ class AILocator:
             )
             
             # 解析候选位置
-            candidates = self._parse_location_response(response.get("content", ""))
+            candidates = self._parse_location_response(response.content)
             
             if candidates:
                 # 使用最佳候选位置更新结果

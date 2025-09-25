@@ -293,21 +293,42 @@ def _is_non_table_page(raw: str) -> bool:
     return ("目录" in r) or ("名词解释" in r) or ("情况说明" in r)
 
 def find_table_anchors(doc: Document) -> Dict[str, List[int]]:
+    """
+    表锚点识别优化：
+    - 放宽“是否为表页”的判定：支持“单位：x元/万元/亿元”“本表反映”，以及常见表头信号
+    - 匹配时既考虑别名也考虑表名本体（标准化后），提升召回、降低缺失误报
+    """
     anchors: Dict[str, List[int]] = {it["name"]: [] for it in NINE_TABLES}
+    unit_hint = re.compile(r"单位[:：]\s*(万元|元|亿元)")
     for pidx, raw in enumerate(doc.page_texts):
         if _is_non_table_page(raw):
             continue
         ntxt = normalize_text(raw)
         if not ntxt:
             continue
-        is_table_page = ("单位：" in raw) or ("本表反映" in raw)
+        # 放宽表页判断
+        is_table_page = (
+            bool(unit_hint.search(raw)) or
+            ("本表反映" in raw) or
+            # 简单的表头信号（包含“合计”且数字较多）
+            (("合计" in raw) and (sum(ch.isdigit() for ch in raw) >= 10))
+        )
         if not is_table_page:
             continue
-        for it in NINE_ALIAS_NORMAL:
-            for alias_norm in it["aliases_norm"]:
-                if alias_norm and (alias_norm in ntxt or fuzz.partial_ratio(alias_norm, ntxt) >= 95):
-                    anchors[it["name"]].append(pidx + 1)
-                    break
+        # 既匹配别名，也匹配表名本体
+        for spec in NINE_TABLES:
+            name_norm = normalize_text(spec["name"])
+            matched = False
+            if name_norm and (name_norm in ntxt or fuzz.partial_ratio(name_norm, ntxt) >= 92):
+                matched = True
+            else:
+                for alias in spec.get("aliases", []):
+                    alias_norm = normalize_text(alias)
+                    if alias_norm and (alias_norm in ntxt or fuzz.partial_ratio(alias_norm, ntxt) >= 95):
+                        matched = True
+                        break
+            if matched:
+                anchors[spec["name"]].append(pidx + 1)
     return anchors
 
 
@@ -393,9 +414,16 @@ class R33002_NineTablesCheck(Rule):
                 if len(pages) > 1:
                     duplicates.append((nm, pages))
 
-        # 缺失
+        # 缺失：严重度分级（降低轻微缺失的误报）
+        missing_count = len(missing)
         for nm in missing:
-            issues.append(self._issue(f"缺失表：{nm}", {"table": nm}, severity="error"))
+            if doc.pages < 8:
+                sev = "info"
+            elif missing_count <= 2:
+                sev = "warn"
+            else:
+                sev = "error"
+            issues.append(self._issue(f"缺失表：{nm}", {"table": nm}, severity=sev))
 
         # 重复
         for nm, pgs in duplicates:
@@ -544,10 +572,14 @@ class R33005_TableTotalConsistency(Rule):
                     if len(parts) < 1:
                         continue
 
+                    # 至少两个分项参与，避免孤立行造成误报
+                    if len(parts) < 2:
+                        continue
                     sum_val = float(np.nansum(parts))
-                    tol = max(1.0, abs(sum_val) * 0.001)
+                    # 动态容差：根据金额量级自适应
+                    tol = calculate_dynamic_tolerance(sum_val, (total_val or 0.0), base_tol=1.0)
                     diff = abs(sum_val - (total_val or 0.0))
-                    if diff > tol and (total_val == 0 or diff / max(abs(total_val), 1e-6) > 0.5):
+                    if diff > tol:
                         issues.append(self._issue(
                             f"“合计”与分项和不一致：合计={total_val}，分项和={sum_val}（容忍±{round(tol, 2)}）",
                             {"page": pidx + 1, "table_index": tindex, "col": c + 1, "total_row": total_row_idx + 1},
@@ -1010,8 +1042,8 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
         re.S
     )
 
-    # 5) 增强的负样本过滤：添加更多干扰词
-    _NEGATIVE_FILTER = re.compile(r"同比|比上年|比上年度|比上期|增长|减少|较去年|与去年|上年同期")
+    # 5) 增强的负样本过滤：添加更多干扰词（压制趋势/环比/说明性文字造成的误报）
+    _NEGATIVE_FILTER = re.compile(r"同比|环比|比上年|比上年度|比上期|增长|减少|下降|较去年|与去年|上年同期|百分点|增长率|下降率|汇总|明细|简表|概览|总体情况概述")
 
     # 6) 原因检查（"其中："之后的分项）
     _REASON_CHECK = re.compile(r"(主要原因|增减原因|变动原因)\s*[:：]")
@@ -1093,7 +1125,9 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
                         import requests
                         import json
                         
-                        ai_extractor_url = os.getenv("AI_EXTRACTOR_URL", "http://127.0.0.1:9009/ai/extract/v1")
+                        ai_extractor_base_url = os.getenv("AI_EXTRACTOR_URL", "http://127.0.0.1:9009")
+                        # 确保使用正确的API端点
+                        ai_extractor_url = f"{ai_extractor_base_url.rstrip('/')}/ai/extract/v1"
                         
                         payload = {
                             "task": "R33110_pairs_v1",
@@ -1102,6 +1136,7 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
                             "max_windows": 3
                         }
                         
+                        logger.info(f"[R33110] 调用AI抽取器: {ai_extractor_url}")
                         response = requests.post(
                             ai_extractor_url,
                             json=payload,
@@ -1516,7 +1551,8 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
 
 
 # ---------- 注册 ----------
-ALL_RULES: List[Rule] = [
+# 原始完整规则集（基线）
+ALL_RULES_BASE: List[Rule] = [
     R33001_CoverYearUnit(),
     R33002_NineTablesCheck(),
     R33003_PageFileThreshold(),
@@ -1535,6 +1571,21 @@ ALL_RULES: List[Rule] = [
     R33109_EmptyTables_Statement(),
     R33110_BudgetVsFinal_TextConsistency(),
 ]
+
+# 动态裁剪：默认仅聚焦预算↔决算对比（V33-110），避免非关键提示干扰
+def _resolve_active_rules() -> List[Rule]:
+    # 环境变量优先：ENABLE_RULES="V33-110,V33-002"
+    enable_env = os.getenv("ENABLE_RULES", "")
+    if enable_env.strip():
+        code_set = {x.strip() for x in enable_env.split(",") if x.strip()}
+        return [r for r in ALL_RULES_BASE if r.code in code_set]
+    # 默认聚焦对比结论：只启用 V33-110；如需全开，可设置 ENABLE_RULES=ALL
+    focus_compare = os.getenv("FOCUS_COMPARE_ONLY", "1").lower() in ("1", "true", "yes")
+    if focus_compare:
+        return [r for r in ALL_RULES_BASE if r.code == "V33-110"]
+    return ALL_RULES_BASE
+
+ALL_RULES: List[Rule] = _resolve_active_rules()
 
 
 # ---------- 构建 Document ----------

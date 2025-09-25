@@ -13,5 +13,13 @@ pydantic>=2.0.0
 openai>=1.0.0
 volcengine>=1.0.0
 aiofiles>=23.0.0
-# 新增：requests用于后端规则R33110的同步HTTP调用AI抽取器
+# 同步HTTP调用依赖
 requests>=2.32.0
+# 数据处理依赖
+pyyaml>=6.0.1
+# 代码质量工具
+ruff>=0.3.7
+mypy>=1.8.0
+# 证据截图功能
+PyMuPDF>=1.23.0
+Pillow>=10.0.0

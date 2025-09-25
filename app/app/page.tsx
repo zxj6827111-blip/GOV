@@ -57,6 +57,9 @@ export default function HomePage() {
   // 检测选项状态
   const [useLocalRules, setUseLocalRules] = useState(true);
   const [useAiAssist, setUseAiAssist] = useState(true);
+  // 模板选择
+  const [templates, setTemplates] = useState<Array<{ key: string; name: string }>>([]);
+  const [templateKey, setTemplateKey] = useState<string>("");
   const pollTimer = useRef<any>(null);
   
   // 任务卡住检测状态
@@ -90,6 +93,52 @@ export default function HomePage() {
       }
     };
     fetchConfig();
+  }, []);
+
+  // 加载模板列表（含兜底解析 + 默认模板回退）
+  useEffect(() => {
+    (async () => {
+      const defaults = [
+        { key: "dept_decision_template_v1", name: "附件2：部门决算模板" },
+        { key: "unit_decision_template_district_v1", name: "附件2-2：单位决算公开模板（区级）" }
+      ];
+      try {
+        const r = await fetch("/api/templates", { cache: "no-store" });
+        const js = await r.json();
+        if (js?.templates && Array.isArray(js.templates) && js.templates.length > 0) {
+          setTemplates(js.templates.map((t: any) => ({ key: t.key, name: t.name })));
+          return;
+        }
+        if (js?.raw && typeof js.raw === "string") {
+          // 兜底：前端简易解析
+          const lines = js.raw.split(/\r?\n/);
+          const items: Array<{ key: string; name: string }> = [];
+          let inTpl = false; let cur: any = null;
+          for (const line of lines) {
+            const l = line.trim();
+            if (l.startsWith("templates:")) { inTpl = true; continue; }
+            if (!inTpl) continue;
+            if (l.startsWith("-")) { if (cur && cur.key && cur.name) items.push(cur); cur = {}; continue; }
+            if (!cur) continue;
+            const m = l.match(/^(key|name):\s*(.+)$/);
+            if (m) {
+              const k = m[1]; let v = m[2]; v = v.replace(/^["']|["']$/g, "");
+              (cur as any)[k] = v;
+            }
+          }
+          if (cur && (cur as any).key && (cur as any).name) items.push(cur as any);
+          if (items.length > 0) {
+            setTemplates(items);
+            return;
+          }
+        }
+        // 最终回退：使用默认模板列表，保证可选
+        setTemplates(defaults);
+      } catch {
+        // 网络/解析失败时使用默认模板列表
+        setTemplates(defaults);
+      }
+    })();
   }, []);
 
   // 轮询
@@ -232,14 +281,42 @@ export default function HomePage() {
       const t0 = Date.now();
       appendLog(`开始解析（job ${job.job_id.slice(0, 8)}...）`);
       
+      // 若未手动选择模板，先自动识别一次
+      let finalTemplateKey = templateKey;
+      let autoInfo: any = null;
+      if (!finalTemplateKey) {
+        try {
+          appendLog("自动识别模板中...");
+          const autoRes = await fetch(`/api/templates/auto-detect?job_id=${encodeURIComponent(job.job_id)}`, { cache: "no-store" });
+          autoInfo = await autoRes.json();
+          appendLog(`自动识别返回: HTTP ${autoRes.status} → ${JSON.stringify({
+            ok: autoInfo?.ok, templateKey: autoInfo?.templateKey, confidence: autoInfo?.confidence, needManual: autoInfo?.needManual, conflict: autoInfo?.conflict, margin: autoInfo?.margin
+          })}`);
+          if (autoRes.ok && autoInfo?.ok) {
+            if (!autoInfo.needManual && !autoInfo.conflict && autoInfo.templateKey) {
+              finalTemplateKey = autoInfo.templateKey as string;
+            } else {
+              // 回退：保持不带模板键，由后端在 analyze 中再次兜底识别
+              appendLog("识别置信度不足或存在冲突，回退为服务器端兜底识别（不携带模板键）");
+            }
+          }
+        } catch (err: any) {
+          appendLog(`自动识别异常: ${err?.message || String(err)}`);
+        }
+      }
+
       // 构建请求参数
-      const body = {
+      const body: any = {
         use_local_rules: useLocalRules,
         use_ai_assist: useAiAssist,
         mode: useLocalRules && useAiAssist ? "dual" : useLocalRules ? "local" : "ai"
       };
-      
-      const r = await fetch(`/api/analyze/${job.job_id}`, { 
+      if (finalTemplateKey) {
+        body.templateKey = finalTemplateKey;
+        body.template_key = finalTemplateKey; // 兼容后端不同命名
+      }
+
+      const r = await fetch(`/api/analyze/${job.job_id}${finalTemplateKey ? `?templateKey=${encodeURIComponent(finalTemplateKey)}` : ""}`, { 
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body)
@@ -310,6 +387,8 @@ const allIssues: Issue[] = buckets.all;
 // 2. 旧格式：status.results (来自jobs_adv2 API)
 // 3. 直接双模式格式：status.ai_findings/rule_findings (来自/api/jobs/{id}/status)
 const isDualMode = (
+  // 新增：直接支持 result.ai_findings/rule_findings
+  ((status as any)?.result?.ai_findings !== undefined || (status as any)?.result?.rule_findings !== undefined) ||
   ((status as any)?.result?.mode === "dual" && (status as any)?.result?.dual_mode) ||
   ((status as any)?.results?.ai_findings !== undefined || (status as any)?.results?.rule_findings !== undefined) ||
   ((status as any)?.results?.aiFindings !== undefined || (status as any)?.results?.ruleFindings !== undefined) ||
@@ -323,6 +402,23 @@ if (isDualMode) {
   if ((status as any)?.result?.dual_mode) {
     dualModeResult = (status as any).result.dual_mode;
   } 
+  // 新增：直接从 result.ai_findings / result.rule_findings 构建
+  else if ((status as any)?.result?.ai_findings !== undefined || (status as any)?.result?.rule_findings !== undefined) {
+    const res = (status as any).result;
+    dualModeResult = {
+      ai_findings: res.ai_findings || [],
+      rule_findings: res.rule_findings || [],
+      merged: res.merged || {
+        totals: { ai: 0, rule: 0, merged: 0, conflicts: 0, agreements: 0, ai_only: 0, rule_only: 0 },
+        conflicts: [],
+        agreements: [],
+        merged_ids: [],
+        ai_only: [],
+        rule_only: []
+      },
+      meta: res.meta || {}
+    };
+  }
   // 回退到旧格式，从status.results构建DualModeResult
   else if ((status as any)?.results) {
     const results = (status as any).results;
@@ -384,7 +480,7 @@ const convertToIssueItem = (issue: Issue, index: number): IssueItem => ({
 });
 
 // 为问题添加来源标识
-const enrichedIssues = allIssues.map((issue) => {
+let enrichedIssues = allIssues.map((issue) => {
   // 根据多种条件判断来源
   let source = 'local_rules'; // 默认为本地规则
   
@@ -420,6 +516,25 @@ const enrichedIssues = allIssues.map((issue) => {
     source
   };
 });
+
+// 模板化纠偏：若选择了“决算模板”，将“预算收支总表缺失”改为“收入支出决算总表缺失”
+if (templateKey && (templateKey.includes("decision") || templateKey.includes("decis") || templateKey.includes("决算"))) {
+  enrichedIssues = enrichedIssues.map((issue: any) => {
+    const fixTitle = (txt: string) => txt.replace(/预算收支总表/g, "收入支出决算总表");
+    const fixed = { ...issue };
+    if (typeof fixed.message === "string" && fixed.message.includes("预算收支总表")) {
+      fixed.message = fixTitle(fixed.message);
+    }
+    if (typeof (fixed as any).title === "string" && (fixed as any).title.includes("预算收支总表")) {
+      (fixed as any).title = fixTitle((fixed as any).title);
+    }
+    // 可选：将此类误报降级为 info
+    if ((fixed as any).title?.includes("收入支出决算总表缺失")) {
+      fixed.severity = (fixed.severity === "high") ? "warn" : fixed.severity;
+    }
+    return fixed;
+  });
+}
 
 // 获取问题来源标识的显示文本和样式
 const getSourceBadge = (source: string) => {
@@ -480,6 +595,22 @@ const badgeColor = (sev: string) =>
           >
             通过链接上传
           </button>
+
+          {/* 模板选择下拉（可选） */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-slate-600">模板：</label>
+            <select
+              value={templateKey}
+              onChange={(e) => setTemplateKey(e.target.value)}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm min-w-[220px]"
+              title="不选择则自动识别"
+            >
+              <option value="">自动识别</option>
+              {templates.map((t) => (
+                <option key={t.key} value={t.key}>{t.name}</option>
+              ))}
+            </select>
+          </div>
 
           <button
             onClick={onAnalyze}

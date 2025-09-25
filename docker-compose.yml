@@ -1,0 +1,186 @@
+# GovBudgetChecker 一键部署配置
+# 支持主服务 + AI微服务 + 可选的数据库和监控服务
+
+version: '3.8'
+
+services:
+  # 主应用服务（前端+后端）
+  govbudget-main:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: govbudget-main
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - AI_ASSIST_ENABLED=true
+      - AI_EXTRACTOR_URL=http://govbudget-ai:9009/ai/extract/v1
+      - MAX_UPLOAD_SIZE=100MB
+      - MEMORY_LIMIT_MB=2048
+      - OCR_ENABLED=true
+    volumes:
+      - govbudget-jobs:/app/jobs
+      - govbudget-logs:/app/logs
+      - govbudget-uploads:/app/uploads
+    depends_on:
+      - govbudget-ai
+    networks:
+      - govbudget-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # AI微服务
+  govbudget-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    container_name: govbudget-ai
+    restart: unless-stopped
+    ports:
+      - "9009:9009"
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - ZHIPU_API_KEY=${ZHIPU_API_KEY:-}
+      - DOUBAO_API_KEY=${DOUBAO_API_KEY:-}
+      - AI_TIMEOUT=120
+    volumes:
+      - govbudget-ai-cache:/app/cache
+    networks:
+      - govbudget-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Redis缓存（可选）
+  redis:
+    image: redis:7-alpine
+    container_name: govbudget-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - govbudget-redis:/data
+    networks:
+      - govbudget-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    profiles: ["with-cache"]
+
+  # PostgreSQL数据库（可选）
+  postgres:
+    image: postgres:15-alpine
+    container_name: govbudget-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=govbudget
+      - POSTGRES_USER=govbudget
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-govbudget123}
+    volumes:
+      - govbudget-postgres:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - govbudget-network
+    profiles: ["with-db"]
+
+  # Nginx反向代理（可选）
+  nginx:
+    image: nginx:alpine
+    container_name: govbudget-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - govbudget-static:/usr/share/nginx/html/static
+    depends_on:
+      - govbudget-main
+    networks:
+      - govbudget-network
+    profiles: ["with-nginx"]
+
+  # Prometheus监控（可选）
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: govbudget-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - govbudget-prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - govbudget-network
+    profiles: ["with-monitoring"]
+
+  # Grafana仪表板（可选）
+  grafana:
+    image: grafana/grafana:latest
+    container_name: govbudget-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - govbudget-grafana:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - govbudget-network
+    profiles: ["with-monitoring"]
+
+# 网络配置
+networks:
+  govbudget-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# 数据卷
+volumes:
+  govbudget-jobs:
+    driver: local
+  govbudget-logs:
+    driver: local
+  govbudget-uploads:
+    driver: local
+  govbudget-ai-cache:
+    driver: local
+  govbudget-redis:
+    driver: local
+  govbudget-postgres:
+    driver: local
+  govbudget-static:
+    driver: local
+  govbudget-prometheus:
+    driver: local
+  govbudget-grafana:
+    driver: local

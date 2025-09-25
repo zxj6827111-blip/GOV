@@ -169,9 +169,9 @@ export default function IssueList({
 
       {/* 问题列表 */}
       <div className="space-y-3">
-        {filteredAndSortedIssues.map((issue) => (
+        {filteredAndSortedIssues.map((issue, idx) => (
           <div
-            key={issue.id}
+            key={`${issue.id}-${idx}`}
             className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white"
             onClick={() => onIssueClick?.(issue)}
           >
@@ -229,12 +229,12 @@ export default function IssueList({
             )}
             
             {/* 证据预览 */}
-            {issue.evidence.length > 0 && (
+            {(issue.evidence && issue.evidence.length > 0) && (
               <div className="text-xs text-gray-500 mb-2">
                 <span className="font-medium">证据：</span>
                 <span className="italic">
-                  "{issue.evidence[0].text.substring(0, 120)}"
-                  {issue.evidence[0].text.length > 120 && "..."}
+                  "{(issue.evidence?.[0]?.text || "").substring(0, 120)}"
+                  {((issue.evidence?.[0]?.text || "").length > 120) && "..."}
                 </span>
               </div>
             )}

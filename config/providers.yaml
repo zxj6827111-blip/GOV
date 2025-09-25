@@ -8,7 +8,8 @@ region: "cn"   # cn | global
 fallback_chain: 
   - "zhipu_flash"
   - "zhipu_reasoner"
-  - "doubao_pro"
+  - "deepseek_primary"
+  - "deepseek_backup"
   - "openai_fallback"
 
 # 提供商详细配置
@@ -17,40 +18,53 @@ providers:
   zhipu_flash:
     enabled: true
     base: "https://open.bigmodel.cn/api/paas/v4"
-    api_key_env: "ZHIPU_API_KEY"
+    api_key_env: "ZHIPU_FLASH_API_KEY"
     model: "glm-4.5-flash"
     timeout_s: 60
     retries: 1
     model_aliases: 
       - "glm-4-flash"
-      - "glm-4.5"
+      - "glm-4.5-flash"
     description: "智谱AI快速模型，适合简单任务"
     
   # 智谱AI - GLM-4.5 (推理模型)
   zhipu_reasoner:
     enabled: true
-    base: "https://open.bigmodel.cn/api/paas/v4"
-    api_key_env: "ZHIPU_API_KEY"
-    model: "glm-4.5"
+    base: "https://api-inference.modelscope.cn/v1"
+    api_key_env: "ZHIPU_GLM45_API_KEY"
+    model: "ZhipuAI/GLM-4.5"
     timeout_s: 90
     retries: 0
     model_aliases:
-      - "glm-4"
+      - "glm-4.5"
       - "glm-4-plus"
     description: "智谱AI推理模型，适合复杂分析"
     
-  # 豆包AI - Doubao Pro
-  doubao_pro:
+  # DeepSeek AI - V3.1 (主灾备)
+  deepseek_primary:
     enabled: true
-    base: "https://ark.cn-beijing.volces.com/api/v3"
-    api_key_env: "ARK_API_KEY"
-    model: "doubao-1-5-pro-32k-250115"
+    base: "https://api.deepseek.com/v1"
+    api_key_env: "DEEPSEEK_API_KEY"
+    model: "deepseek-ai/DeepSeek-V3.1"
+    timeout_s: 60
+    retries: 1
+    model_aliases:
+      - "deepseek-v3.1"
+      - "deepseek-primary"
+    description: "DeepSeek V3.1主模型"
+    
+  # DeepSeek AI - V3 (备用灾备)
+  deepseek_backup:
+    enabled: true
+    base: "https://api.deepseek.com/v1"
+    api_key_env: "DEEPSEEK_API_KEY"
+    model: "deepseek-ai/DeepSeek-V3"
     timeout_s: 60
     retries: 0
     model_aliases:
-      - "doubao-pro"
-      - "doubao-1.5-pro"
-    description: "字节跳动豆包专业版"
+      - "deepseek-v3"
+      - "deepseek-backup"
+    description: "DeepSeek V3备用模型"
     
   # OpenAI 兼容接口 (备用)
   openai_fallback:
