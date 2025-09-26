@@ -6,7 +6,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol
 
 # 加载.env文件（如果存在）
 try:
@@ -71,6 +71,45 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title=APP_TITLE)
 config = AppConfig.load()
+
+class FileSystemJobStorage:
+    """??????????????"""
+    def __init__(self, base: Path | str) -> None:
+        self.base = Path(base).resolve()
+        self.base.mkdir(parents=True, exist_ok=True)
+
+    def create_job_dir(self, job_id: str) -> Path:
+        job_dir = self.base / job_id
+        job_dir.mkdir(parents=True, exist_ok=True)
+        return job_dir
+
+    def save_uploaded_file(self, job_id: str, filename: str, data: bytes) -> Path:
+        job_dir = self.create_job_dir(job_id)
+        safe_name = Path(filename or "file.pdf").name
+        target = job_dir / safe_name
+        target.write_bytes(data)
+        return target
+
+    def get(self, job_id: str) -> Optional[Dict[str, Any]]:
+        job_dir = self.base / job_id
+        status_file = job_dir / "status.json"
+        if not job_dir.exists() or not status_file.exists():
+            return None
+        try:
+            payload = json.loads(status_file.read_text(encoding="utf-8"))
+            payload.setdefault("job_id", job_id)
+            return payload
+        except Exception:
+            return None
+
+    def get_result(self, job_id: str) -> Optional[Dict[str, Any]]:
+        payload = self.get(job_id)
+        if not payload:
+            return None
+        return payload.get("result")
+
+job_storage = FileSystemJobStorage(UPLOAD_ROOT)
+save_uploaded_file = job_storage.save_uploaded_file
 
 # 新增：双模式配置
 settings = get_settings()
@@ -521,32 +560,34 @@ def _ensure_pdf(file: UploadFile):
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    """文件上传接口"""
+    """??????"""
+    if file is None or not getattr(file, "filename", None):
+        raise HTTPException(status_code=400, detail="no file")
     if not _ensure_pdf(file):
-        raise HTTPException(status_code=415, detail="仅支持 PDF 文件")
+        raise HTTPException(status_code=400, detail="unsupported media type")
 
     data = await file.read()
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
-        raise HTTPException(status_code=413, detail=f"文件超过 {MAX_UPLOAD_MB}MB 限制")
+        raise HTTPException(status_code=413, detail=f"???? {MAX_UPLOAD_MB}MB ??")
 
     job_id = os.urandom(16).hex()
-    job_dir = UPLOAD_ROOT / job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
-
     safe_name = Path(file.filename or "file.pdf").name
-    dst = job_dir / safe_name
-    with open(dst, "wb") as f:
-        f.write(data)
+    saved_target = save_uploaded_file(job_id, safe_name, data)
 
     checksum = hashlib.sha256(data).hexdigest()
+    try:
+        saved_rel = str(Path(saved_target).resolve().relative_to(UPLOAD_ROOT))
+    except Exception:
+        saved_rel = str(saved_target)
+
     return {
         "job_id": job_id,
         "filename": file.filename,
         "size": len(data),
-        "saved_path": str(dst.relative_to(UPLOAD_ROOT)),
+        "saved_path": saved_rel,
+        "file_path": saved_rel,
         "checksum": checksum,
     }
-
 
 @app.post("/analyze/{job_id}")
 @app.post("/api/analyze/{job_id}")
@@ -599,48 +640,34 @@ async def analyze_job(job_id: str, request: Request):
 @app.get("/jobs/{job_id}/status")
 @app.get("/api/jobs/{job_id}/status")
 async def get_job_status(job_id: str):
-    """获取任务状态"""
-    job_dir = UPLOAD_ROOT / job_id
-    status_file = job_dir / "status.json"
-    if not job_dir.exists():
-        raise HTTPException(status_code=404, detail="job_id 不存在")
-    if not status_file.exists():
-        # 未生成状态文件时返回进行中占位
-        return {"status": "processing", "progress": 0}
-    try:
-        content = status_file.read_text(encoding="utf-8")
-        return json.loads(content)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"读取任务状态失败: {e}")
-
+    """??????"""
+    payload = job_storage.get(job_id)
+    if not payload:
+        raise HTTPException(status_code=404, detail="job_id ???")
+    return payload
 
 @app.get("/jobs/{job_id}/result")
 @app.get("/api/jobs/{job_id}/result")
 async def get_job_result(job_id: str):
-    """获取任务结果"""
-    job_dir = UPLOAD_ROOT / job_id
-    status_file = job_dir / "status.json"
-    if not job_dir.exists():
-        raise HTTPException(status_code=404, detail="job_id 不存在")
-    if not status_file.exists():
-        raise HTTPException(status_code=404, detail="任务状态文件不存在")
+    """??????"""
+    payload = job_storage.get(job_id)
+    if not payload:
+        raise HTTPException(status_code=404, detail="job_id ???")
+    if payload.get("status") not in {"done", "completed"}:
+        raise HTTPException(status_code=425, detail="??????")
 
-    try:
-        content = status_file.read_text(encoding="utf-8")
-        status_data = json.loads(content)
+    result = payload.get("result")
+    if not result:
+        raise HTTPException(status_code=404, detail="??????")
 
-        if status_data.get("status") != "done":
-            raise HTTPException(status_code=425, detail="任务尚未完成")
+    return result
 
-        result = status_data.get("result", {})
-        if not result:
-            raise HTTPException(status_code=404, detail="任务结果为空")
 
-        return result
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"解析任务状态失败: {e}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取任务结果失败: {e}")
+@app.get("/api/jobs/{job_id}/results")
+async def get_job_results(job_id: str):
+    """?????????????"""
+    return await get_job_result(job_id)
+
 
 
 # ================= 增强版API端点（MVP产品化） =================

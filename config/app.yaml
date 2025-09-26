@@ -16,6 +16,7 @@ ai:
   retry_count: 1                   # 重试次数
   temperature: 0.2                 # 温度参数
   max_tokens: 4000                 # 最大token数
+  exclude_budget_content: true      # 是否排除预算相关内容（仅专注决算检查）
 
 # 规则引擎配置
 rules:

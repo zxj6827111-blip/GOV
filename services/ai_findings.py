@@ -24,6 +24,11 @@ class AIFindingsService:
         self.config = config
         self.ai_client = ExtractorClient()  # 复用现有AI客户端
         self.ai_errors = []  # 聚合AI错误信息
+        
+        # 加载预算排除配置
+        from config.settings import get_settings
+        settings = get_settings()
+        self.exclude_budget_content = settings.is_budget_content_excluded()
         # 预加载规则白名单（来自 YAML）并构建双向映射（Rxxx 与 V33-xxx）
         self._rule_whitelist = set()
         self._mapped_whitelist = set()
@@ -132,16 +137,24 @@ class AIFindingsService:
             if context.tables
             else "无表格数据"
         )
+        
+        # 根据配置决定是否排除预算内容
+        if self.exclude_budget_content:
+            budget_constraint = "\n重要提醒：\n- 仅检查决算相关内容，不涉及预算对比或预算执行分析\n- 如发现预算相关内容，应忽略不报告\n- 重点关注决算本身的合规性和准确性"
+            expert_type = "政府决算合规检查的专家"
+        else:
+            budget_constraint = ""
+            expert_type = "政府预决算合规检查的专家"
 
         prompt = f"""
-你是政府预决算合规检查的专家。请仅依据“提供的规则白名单”对文档进行检查；若没有命中任何规则，返回空数组 []。
+你是{expert_type}。请仅依据"提供的规则白名单"对文档进行检查；若没有命中任何规则，返回空数组 []。
 
 严格约束：
 - 你只能输出规则白名单中的 rule_id，不允许生成白名单之外的 rule_id
 - 每条发现必须包含：rule_id、title、message、severity、page（数字>0）、evidence（文本证据，非空）
 - 严重程度仅限：critical、high、medium、low、info
 - 仅输出 JSON 数组，不要输出多余解释、不要包裹代码块
-- 若没有发现命中规则的问题，返回空数组 []
+- 若没有发现命中规则的问题，返回空数组 []{budget_constraint}
 
 规则白名单（仅可使用以下 rule_id）：
 {rule_ids_json}
@@ -241,36 +254,70 @@ class AIFindingsService:
 
     def _get_mock_ai_response(self) -> str:
         """获取模拟AI响应（用于测试）"""
-        mock_response = [
-            {
-                "rule_id": "AI-COMP-001",
-                "title": "预算收支总表缺失",
-                "message": "未在文档中发现完整的预算收支总表，可能影响预算执行情况的全面了解",
-                "severity": "high",
-                "page": 1,
-                "section": "预算表",
-                "table": "预算收支总表",
-                "evidence": "第1页目录显示应有预算收支总表，但正文中未找到对应表格",
-                "metrics": {"expected": 1, "actual": 0, "diff": 1},
-                "suggestion": "请补充完整的预算收支总表，包含收入和支出的详细分类",
-                "tags": ["表格完整性", "预算表"],
-                "category": "表格缺失",
-            },
-            {
-                "rule_id": "AI-CALC-001",
-                "title": "收入明细汇总不符",
-                "message": "各项收入明细汇总与总收入金额不一致，存在计算错误",
-                "severity": "medium",
-                "page": 3,
-                "section": "收入明细",
-                "table": "收入明细表",
-                "evidence": "第3页收入明细表显示：税收收入800万+非税收入150万=950万，但总收入显示1000万",
-                "metrics": {"expected": 10000000, "actual": 9500000, "diff": 500000, "pct": 5.0},
-                "suggestion": "请核对收入明细计算，确保各项明细汇总与总额一致",
-                "tags": ["金额一致性", "收入"],
-                "category": "计算错误",
-            },
-        ]
+        if self.exclude_budget_content:
+            # 排除预算内容，仅使用决算相关的模拟数据
+            mock_response = [
+                {
+                    "rule_id": "AI-COMP-001",
+                    "title": "决算收支总表缺失",
+                    "message": "未在文档中发现完整的决算收支总表，可能影响决算执行情况的全面了解",
+                    "severity": "high",
+                    "page": 1,
+                    "section": "决算表",
+                    "table": "决算收支总表",
+                    "evidence": "第1页目录显示应有决算收支总表，但正文中未找到对应表格",
+                    "metrics": {"expected": 1, "actual": 0, "diff": 1},
+                    "suggestion": "请补充完整的决算收支总表，包含收入和支出的详细分类",
+                    "tags": ["表格完整性", "决算表"],
+                    "category": "表格缺失",
+                },
+                {
+                    "rule_id": "AI-CALC-001",
+                    "title": "决算收入明细汇总不符",
+                    "message": "各项决算收入明细汇总与总收入金额不一致，存在计算错误",
+                    "severity": "medium",
+                    "page": 3,
+                    "section": "收入明细",
+                    "table": "决算收入明细表",
+                    "evidence": "第3页决算收入明细表显示：税收收入800万+非税收入150万=950万，但总收入显示1000万",
+                    "metrics": {"expected": 10000000, "actual": 9500000, "diff": 500000, "pct": 5.0},
+                    "suggestion": "请核对决算收入明细计算，确保各项明细汇总与总额一致",
+                    "tags": ["金额一致性", "决算收入"],
+                    "category": "计算错误",
+                },
+            ]
+        else:
+            # 包含预算内容的模拟数据
+            mock_response = [
+                {
+                    "rule_id": "AI-COMP-001",
+                    "title": "预决算收支总表缺失",
+                    "message": "未在文档中发现完整的预决算收支总表，可能影响预决算执行情况的全面了解",
+                    "severity": "high",
+                    "page": 1,
+                    "section": "预决算表",
+                    "table": "预决算收支总表",
+                    "evidence": "第1页目录显示应有预决算收支总表，但正文中未找到对应表格",
+                    "metrics": {"expected": 1, "actual": 0, "diff": 1},
+                    "suggestion": "请补充完整的预决算收支总表，包含收入和支出的详细分类",
+                    "tags": ["表格完整性", "预决算表"],
+                    "category": "表格缺失",
+                },
+                {
+                    "rule_id": "AI-CALC-001",
+                    "title": "预算收入明细汇总不符",
+                    "message": "各项预算收入明细汇总与总收入金额不一致，存在计算错误",
+                    "severity": "medium",
+                    "page": 3,
+                    "section": "预算收入",
+                    "table": "预算收入明细表",
+                    "evidence": "第3页预算收入明细表显示：税收收入800万+非税收入150万=950万，但总收入显示1000万",
+                    "metrics": {"expected": 10000000, "actual": 9500000, "diff": 500000, "pct": 5.0},
+                    "suggestion": "请核对预算收入明细计算，确保各项明细汇总与总额一致",
+                    "tags": ["金额一致性", "预算收入"],
+                    "category": "计算错误",
+                },
+            ]
         return json.dumps(mock_response, ensure_ascii=False, indent=2)
 
     def _parse_ai_response(self, response: str, context: JobContext) -> List[IssueItem]:

@@ -90,19 +90,30 @@ class V33RulesetLoader:
                 return False
 
             with open(self.rules_file, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
+                # 使用safe_load_all处理多文档YAML
+                docs = list(yaml.safe_load_all(f))
+                
+            if not docs:
+                logger.error("YAML文件为空")
+                return False
+                
+            # 合并所有文档的数据
+            merged_data = {}
+            for doc in docs:
+                if isinstance(doc, dict):
+                    merged_data.update(doc)
 
             # 加载元数据
-            self._load_metadata(data.get("meta", {}))
+            self._load_metadata(merged_data.get("meta", {}))
 
             # 加载表格别名
-            self._load_table_aliases(data.get("tables_aliases", {}))
+            self._load_table_aliases(merged_data.get("tables_aliases", {}))
 
             # 加载检查规则
-            self._load_rules(data.get("checks", []))
+            self._load_rules(merged_data.get("checks", []))
 
             # 加载全局配置
-            self._load_global_config(data.get("global_config", {}))
+            self._load_global_config(merged_data.get("global_config", {}))
 
             logger.info(f"规则集加载成功: {len(self.rules)} 条规则")
             return True

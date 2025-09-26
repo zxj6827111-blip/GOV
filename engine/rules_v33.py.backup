@@ -483,29 +483,13 @@ class R33002_NineTablesCheck(Rule):
                 sev = "error"
             issues.append(self._issue(f"缺失表：{nm}", {"table": nm}, severity=sev))
 
-        # 重复（修复：降低误报，只有真正异常才报告）
+        # 重复
         for nm, pgs in duplicates:
-            # 智能判断：只有在同一页面重复，或者页面间隔过小（<2页）才认为是异常
-            if len(pgs) > 2:  # 出现3次及以上才报告
-                # 检查页面间隔
-                sorted_pages = sorted(pgs)
-                min_gap = min(sorted_pages[i+1] - sorted_pages[i] for i in range(len(sorted_pages)-1))
-                if min_gap <= 2:  # 页面间隔过小，可能是异常
-                    issues.append(
-                        self._issue(
-                            f"表出现多次且页面间隔过小：{nm}（页码 {pgs}）", 
-                            {"table": nm, "pages": pgs}, 
-                            severity="info"  # 降低为信息级别
-                        )
-                    )
-            elif max(pgs) - min(pgs) <= 3:  # 集中在少数几页内
-                issues.append(
-                    self._issue(
-                        f"表在相邻页面重复出现：{nm}（页码 {pgs}）", 
-                        {"table": nm, "pages": pgs}, 
-                        severity="info"  # 降低为信息级别
-                    )
+            issues.append(
+                self._issue(
+                    f"表出现多次：{nm}（页码 {pgs}）", {"table": nm, "pages": pgs}, severity="warn"
                 )
+            )
 
         # 顺序（按首次出现页）——至少识别出 3 张表才判断
         if len(order_pages) >= 3:

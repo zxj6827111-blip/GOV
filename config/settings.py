@@ -34,6 +34,12 @@ class Settings:
 
         # 2. 环境变量覆盖
         self._load_env_overrides()
+        
+        # 3. 设置默认的预算排除配置（仅当完全未设置时）
+        if 'ai' not in self._config:
+            self._config['ai'] = {}
+        if self.get("ai", "exclude_budget_content") is None:  # 使用get方法检查，包括环境变量
+            self._config['ai']['exclude_budget_content'] = True
 
     def _load_env_overrides(self):
         """加载环境变量覆盖"""
@@ -51,6 +57,7 @@ class Settings:
             "AI_RETRY": ("ai", "retry_count"),
             "AI_TEMPERATURE": ("ai", "temperature"),
             "AI_MAX_TOKENS": ("ai", "max_tokens"),
+            "AI_EXCLUDE_BUDGET": ("ai", "exclude_budget_content"),
             # OpenAI兼容配置
             "OPENAI_API_KEY": ("ai", "api_key"),
             "OPENAI_BASE_URL": ("ai", "base_url"),
@@ -137,6 +144,10 @@ class Settings:
     def get_logging_config(self) -> Dict[str, Any]:
         """获取日志配置"""
         return self.get_section("logging")
+    
+    def is_budget_content_excluded(self) -> bool:
+        """是否排除预算相关内容"""
+        return self.get("ai", "exclude_budget_content", True)
 
 
 # 全局配置实例
@@ -147,7 +158,9 @@ def get_settings() -> Settings:
     """获取全局配置实例"""
     global _settings
     if _settings is None:
-        _settings = Settings()
+        # 检查环境变量指定的配置路径
+        env_config_path = os.environ.get('APP_CONFIG_PATH')
+        _settings = Settings(config_path=env_config_path)
     return _settings
 
 

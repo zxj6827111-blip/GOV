@@ -80,6 +80,12 @@ def check_ai_detection():
                             print(f"   - AI检测耗时: {ai_time}ms")
                             print(f"   - 规则检测耗时: {rule_time}ms")
                             print(f"   - 总耗时: {total_time}ms")
+                            
+                            # 如果AI检测时间为0，说明可能有问题
+                            if ai_time == 0:
+                                print("⚠️  警告: AI检测耗时为0ms，可能AI检测没有正常执行")
+                        else:
+                            print("⚠️  警告: 未找到性能统计信息")
 
                         # 显示AI检测详情
                         if "ai_meta" in meta:
@@ -92,10 +98,6 @@ def check_ai_detection():
                             if "error" in ai_meta:
                                 error_msg = ai_meta["error"]
                                 print(f"   - 错误信息: {error_msg}")
-
-                        # 如果AI检测时间为0，说明可能有问题
-                        if ai_time == 0:
-                            print("⚠️  警告: AI检测耗时为0ms，可能AI检测没有正常执行")
 
                         return result
                     else:
