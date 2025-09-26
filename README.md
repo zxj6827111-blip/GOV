@@ -140,6 +140,47 @@ yarn dev
 http://localhost:3000
 ```
 
+### Windows 环境
+
+#### 公司网络安装
+
+在企业代理网络中，先设置系统环境变量并运行脚本生成 pip/npm 配置：
+
+```powershell
+# 在 PowerShell 中设置代理（如已由系统统一下发可跳过）
+$env:HTTP_PROXY="http://proxy.example.com:8080"
+$env:HTTPS_PROXY="http://proxy.example.com:8080"
+
+# 生成 %APPDATA%\pip\pip.ini 与 仓库根目录 .npmrc
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1
+
+# 验证 pip/npm 可否出网
+powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
+```
+
+脚本会自动读取 `PIP_INDEX_URL`、`NPM_REGISTRY` 等可选环境变量，生成公司代理环境需要的配置，并打印当前 registry/代理状态，方便排查。
+
+#### 离线兜底
+
+如代理不可用，可在有网络的机器上预先下载依赖并带回内网：
+
+```powershell
+# 预下载 Python 依赖
+pip download -r requirements.txt -d offline\pip
+
+# 离线安装（在目标机器上）
+pip install --no-index --find-links offline\pip -r requirements.txt
+
+# 预打包前端依赖
+npm install
+npm pack
+
+# 离线机器将 *.tgz 拷贝到项目根目录后执行
+npm install --offline
+```
+
+也可以在联网环境中执行 `npm install --cache offline\npm-cache` 填充缓存目录，再将 `offline\npm-cache` 拷贝至目标机器，并在离线环境执行 `npm install --offline --cache offline\npm-cache` 完成安装。
+
 ## 🔧 使用指南
 
 ### 基本使用流程
