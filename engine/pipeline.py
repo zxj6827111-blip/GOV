@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List, Optional  # ✅ 增加 Optional
 
-from .rules_v33 import ALL_RULES, Issue, order_and_number_issues
+from .rules_v33 import ALL_RULES, Issue, build_document, order_and_number_issues
 
 
 def _extract_tables_from_page(page) -> List[List[List[str]]]:
