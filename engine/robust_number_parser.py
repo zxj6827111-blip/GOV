@@ -3,10 +3,10 @@
 支持中文数字、千分位、百分号、括号负数、跨行断词等复杂格式
 """
 
+import logging
 import re
 from decimal import Decimal, InvalidOperation
-from typing import Optional, Tuple, Union, List
-import logging
+from typing import List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 

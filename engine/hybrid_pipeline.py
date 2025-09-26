@@ -3,19 +3,22 @@
 将三层验证系统集成到现有检查流程中
 """
 
-import logging
 import asyncio
-from typing import List, Dict, Any, Optional
+import logging
 import time
-from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
+from .ai_validator import AIValidationConfig, create_ai_validator
 from .hybrid_validator import (
-    ValidationIssue, IssueSource, IssueSeverity, IssueConfidence,
-    ValidationContext, HybridConfig
+    HybridConfig,
+    IssueConfidence,
+    IssueSeverity,
+    IssueSource,
+    ValidationContext,
+    ValidationIssue,
 )
-from .rule_adapter import create_rule_engine_validator, EnhancedRuleEngine
-from .ai_validator import create_ai_validator, AIValidationConfig
-from .intelligent_merger import create_intelligent_merger, MergeConfig, MergeStrategy
+from .intelligent_merger import MergeConfig, MergeStrategy, create_intelligent_merger
+from .rule_adapter import create_rule_engine_validator
 from .rules_v33 import Issue, order_and_number_issues
 
 logger = logging.getLogger(__name__)

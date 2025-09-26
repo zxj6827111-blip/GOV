@@ -3,14 +3,13 @@
 负责合并规则引擎和AI验证器的结果，去重并优化输出
 """
 
+import hashlib
 import logging
-from typing import List, Dict, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import hashlib
-from collections import defaultdict
+from typing import List, Optional
 
-from .hybrid_validator import ValidationIssue, IssueSource, IssueSeverity, IssueConfidence
+from .hybrid_validator import IssueConfidence, IssueSource, ValidationIssue
 
 logger = logging.getLogger(__name__)
 

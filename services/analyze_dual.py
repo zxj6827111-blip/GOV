@@ -2,18 +2,19 @@
 双模式分析编排服务
 并行执行 AI 和规则检查，合并结果
 """
-import logging
 import asyncio
+import json
+import logging
 import time
-from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 from pathlib import Path
-import json
+from typing import Any, Dict, List, Optional, Tuple
 
-from schemas.issues import JobContext, AnalysisConfig, DualModeResponse, MergedSummary, IssueItem
+from schemas.issues import AnalysisConfig, DualModeResponse, IssueItem, JobContext, MergedSummary
 from services.ai_findings import AIFindingsService
 from services.engine_rule_runner import EngineRuleRunner
 from services.merge_findings import merge_findings
+
 try:
     from services.ai_locator import AILocator
 except Exception:
@@ -26,7 +27,6 @@ def save_snapshot(job_id: str, data: Dict[str, Any]) -> None:
     保存快照到status.json，防止空快照覆盖
     要点：只有 None 才覆盖，空数组不覆盖已有非空
     """
-    from pathlib import Path
     import os
     
     upload_root = Path(os.getenv("UPLOAD_DIR", "uploads")).resolve()
@@ -140,8 +140,10 @@ class DualModeAnalyzer:
             logger.info(f"Loaded {len(ai_rules)} AI rules and {len(engine_rules)} engine rules")
             # 立即写入诊断，便于判断为何规则未执行
             try:
+                import json
+                import os
+                import time as _t
                 from pathlib import Path
-                import os, json, time as _t
                 upload_root = Path(os.getenv("UPLOAD_DIR", "uploads")).resolve()
                 job_dir = upload_root / job_context.job_id
                 job_dir.mkdir(parents=True, exist_ok=True)
@@ -371,8 +373,10 @@ class DualModeAnalyzer:
             })
             # 同步将最终计数写入诊断
             try:
+                import json
+                import os
+                import time as _t
                 from pathlib import Path
-                import os, json, time as _t
                 upload_root = Path(os.getenv("UPLOAD_DIR", "uploads")).resolve()
                 job_dir = upload_root / job_context.job_id
                 job_dir.mkdir(parents=True, exist_ok=True)

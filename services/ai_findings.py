@@ -2,16 +2,16 @@
 AI检查服务
 直接调用 LLM 进行合规检查，生成统一的 IssueItem 格式结果
 """
-import logging
-import json
-import time
 import asyncio
-from typing import List, Dict, Any, Optional
-import traceback
+import json
+import logging
 import re
+import time
+import traceback
+from typing import Any, Dict, List, Optional
 
-from schemas.issues import IssueItem, JobContext, AnalysisConfig
 from engine.ai.extractor_client import ExtractorClient  # 复用现有AI客户端
+from schemas.issues import AnalysisConfig, IssueItem, JobContext
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,9 @@ class AIFindingsService:
         self._rule_whitelist = set()
         self._mapped_whitelist = set()
         try:
-            import yaml, os
+            import os
+
+            import yaml
             yaml_path = os.path.join("config", "rules", "rules_v3_3.yaml")
             with open(yaml_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}

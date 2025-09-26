@@ -3,9 +3,10 @@
 """
 检查AI检测功能
 """
-import requests
-import json
 import time
+
+import requests
+
 
 def check_ai_detection():
     print('🔍 检查AI检测功能')

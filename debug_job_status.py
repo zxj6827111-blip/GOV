@@ -2,8 +2,10 @@
 """
 调试任务状态
 """
-import requests
 import json
+
+import requests
+
 
 def debug_job_status():
     """调试任务状态"""

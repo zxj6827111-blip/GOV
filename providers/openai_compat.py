@@ -2,14 +2,13 @@
 OpenAI 兼容提供商实现
 支持 OpenAI API 以及其他兼容接口
 """
-import asyncio
 import json
 import time
-from typing import Dict, List, Any, Optional, AsyncIterator
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import aiohttp
 
-from .base import BaseLLMProvider, LLMResponse, LLMError, LLMErrorType
+from .base import BaseLLMProvider, LLMError, LLMErrorType, LLMResponse
 
 
 class OpenAICompatProvider(BaseLLMProvider):

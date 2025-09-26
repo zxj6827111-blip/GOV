@@ -4,13 +4,13 @@
 优先使用pdfminer/fitz抽取，当页面质量不足时触发OCR兜底
 """
 
+import io
 import logging
 import re
-import os
-import io
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
 from PIL import Image
 
 try:

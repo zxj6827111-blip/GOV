@@ -2,9 +2,10 @@
 """
 监控分析进度
 """
-import requests
 import time
-import json
+
+import requests
+
 
 def monitor_analysis():
     """监控分析进度"""
@@ -35,7 +36,7 @@ def monitor_analysis():
                     if result_response.status_code == 200:
                         result_data = result_response.json()
                         
-                        print(f"\n📋 分析结果:")
+                        print("\n📋 分析结果:")
                         print(f"   总问题数: {result_data.get('total_issues', 0)}")
                         print(f"   AI问题数: {result_data.get('ai_issues', 0)}")
                         print(f"   规则问题数: {result_data.get('rule_issues', 0)}")
@@ -59,7 +60,7 @@ def monitor_analysis():
                                 print(f"      严重程度: {finding.get('severity', 'unknown')}")
                                 print(f"      位置: 第{finding.get('location', {}).get('page', 0)}页")
                         
-                        print(f"\n🎉 AI自由检测功能正常工作！")
+                        print("\n🎉 AI自由检测功能正常工作！")
                         return
                     else:
                         print(f"❌ 获取结果失败: {result_response.status_code} - {result_response.text}")

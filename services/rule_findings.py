@@ -3,13 +3,12 @@
 封装现有规则引擎，转换结果为统一的 IssueItem 格式
 """
 import logging
-from typing import List, Dict, Any, Optional
-import traceback
 import time
+import traceback
+from typing import Any, Dict, List, Optional
 
-from schemas.issues import IssueItem, JobContext, AnalysisConfig
-from engine.rules_v33 import ALL_RULES, build_document, order_and_number_issues  # 导入规则相关功能
-from engine.pipeline import run_rules, build_issues_payload  # 导入流水线功能
+from engine.rules_v33 import ALL_RULES  # 导入规则相关功能
+from schemas.issues import AnalysisConfig, IssueItem, JobContext
 
 logger = logging.getLogger(__name__)
 

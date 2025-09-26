@@ -86,14 +86,15 @@ def order_and_number_issues(doc, issues):
     return sorted_issues
 # engine/rules_v33.py  —— v3.3 规则（修正版）
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Tuple
-
 import os
 import re
 from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 from rapidfuzz import fuzz
+
 
 # ---------- 数据结构 ----------
 @dataclass
@@ -1052,8 +1053,8 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
     _NEXT_ITEM = re.compile(r"(?m)^\s*\d+、")
 
     def _slice_section_span(self, full: str):
-        import os
         import logging
+        import os
         logger = logging.getLogger(__name__)
         
         m1 = self._SEC_START.search(full)
@@ -1109,8 +1110,9 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
         # 第二轮：AI辅助（如果启用且参数为True）
         if use_ai_assist:
             try:
-                from engine.ai.extractor_client import ai_extract_pairs, generate_doc_hash
                 import asyncio
+
+                from engine.ai.extractor_client import ai_extract_pairs, generate_doc_hash
                 
                 ai_enabled = os.getenv("AI_ASSIST_ENABLED", "true").lower() == "true"
                 logger.info(f"[R33110] AI辅助状态: {ai_enabled}, 用户选择: {use_ai_assist}")
@@ -1122,8 +1124,9 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
                         logger.info(f"[R33110] 开始AI抽取，文档哈希: {doc_hash[:8]}...")
                         
                         # 直接使用同步HTTP请求，避免异步事件循环问题
-                        import requests
                         import json
+
+                        import requests
                         
                         ai_extractor_base_url = os.getenv("AI_EXTRACTOR_URL", "http://127.0.0.1:9009")
                         # 确保使用正确的API端点
@@ -1160,13 +1163,13 @@ class R33110_BudgetVsFinal_TextConsistency(Rule):
                         # AI失败不影响主流程
                         logger.warning(f"[R33110] AI辅助抽取失败: {e}")
                 else:
-                    logger.info(f"[R33110] AI辅助未启用，跳过AI处理")
+                    logger.info("[R33110] AI辅助未启用，跳过AI处理")
                         
             except ImportError as e:
                 # AI模块不可用，继续使用纯规则模式
                 logger.info(f"[R33110] AI模块不可用，使用纯规则模式: {e}")
         else:
-            logger.info(f"[R33110] 用户未选择AI辅助，跳过AI处理")
+            logger.info("[R33110] 用户未选择AI辅助，跳过AI处理")
 
         # 第一次去重合并
         unique_pairs = self._deduplicate_pairs(all_pairs)

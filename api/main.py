@@ -1,13 +1,12 @@
 # api/main.py
-import os
-import json
-import time
-import hashlib
-import threading
 import asyncio
+import hashlib
+import json
 import logging
+import os
+import time
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 # 加载.env文件（如果存在）
 try:
@@ -26,38 +25,37 @@ except ImportError:
                         os.environ.setdefault(key.strip(), value.strip())
     load_env_file()
 
-import pdfplumber  # ✅ 新增：读取 PDF
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-
 # 确保项目根目录加入 sys.path，避免从 api 目录启动时找不到顶层包
 import sys as _sys
+
+import pdfplumber  # ✅ 新增：读取 PDF
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in _sys.path:
     _sys.path.insert(0, _ROOT)
 
 # 直接使用引擎暴露的构建与包装函数
-from engine.pipeline import build_document, build_issues_payload
 from api.config import AppConfig
+from config.settings import get_settings
+from engine.pipeline import build_document, build_issues_payload
+
+# 新增：YAML规则加载器
+from engine.rules_yaml_loader import get_rules_loader
+
+# 新增：数据模型和服务
+from schemas.issues import (
+    JobContext,
+)
 
 # 新增：双模式分析服务
 from services.analyze_dual import DualModeAnalyzer
 from services.evidence_extractor import extract_evidence_from_pdf
-from config.settings import get_settings
-
-# 新增：YAML规则加载器
-from engine.rules_yaml_loader import get_rules_loader, load_rules_yaml
 
 # 新增：性能优化器
-from services.performance_optimizer import get_performance_optimizer, optimize_analysis_pipeline
-
-# 新增：数据模型和服务
-from schemas.issues import (
-    AnalysisRequest, AnalysisResponse, HealthStatus, 
-    DualModeResponse, JobContext, AnalysisConfig,
-    create_default_config, IssueItem, MergedSummary
-)
+from services.performance_optimizer import get_performance_optimizer
 
 # ----------------------------- 基础配置 -----------------------------
 APP_TITLE = "GovBudgetChecker API"

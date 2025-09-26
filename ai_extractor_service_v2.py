@@ -4,26 +4,25 @@ AI抽取器微服务 v2.0 - 支持GLM和DeepSeek多模型容灾
 用于规则 V33-110：R33110_BudgetVsFinal_TextConsistency 的三元组抽取
 """
 
-import os
-import sys
-import json
 import hashlib
+import json
 import logging
-import time
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
-import asyncio
+import os
 import re
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+import sys
+import time
+from typing import Any, Dict, List, Optional
 
 # 加载环境变量
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
 load_dotenv()
 
 # 导入新的AI客户端v2
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from services.ai_client_v2 import ai_client_v2, AIError
+from services.ai_client_v2 import AIError, ai_client_v2
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)

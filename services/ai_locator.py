@@ -3,11 +3,11 @@ AI 定位服务
 当引擎侧出现 NO_ANCHOR/MULTI_ANCHOR 时，使用 AI 定位候选页码和摘录
 """
 import logging
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from typing import List, Optional
 
-from schemas.issues import JobContext, IssueItem
-from services.ai_client_v2 import ai_client_v2, AIError
+from schemas.issues import IssueItem, JobContext
+from services.ai_client_v2 import ai_client_v2
 
 logger = logging.getLogger(__name__)
 

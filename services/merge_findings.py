@@ -3,11 +3,10 @@
 实现 AI 和规则引擎结果的对齐、去重和冲突检测
 """
 import logging
-from typing import List, Dict, Tuple, Set
 from difflib import SequenceMatcher
-import re
+from typing import Dict, List, Tuple
 
-from schemas.issues import IssueItem, MergedSummary, ConflictItem, AnalysisConfig
+from schemas.issues import AnalysisConfig, ConflictItem, IssueItem, MergedSummary
 
 logger = logging.getLogger(__name__)
 

@@ -6,13 +6,14 @@
 
 import asyncio
 import sys
-import json
 import time
+
 sys.path.append('.')
 
-from services.analyze_dual import DualModeAnalyzer
+
 from schemas.issues import AnalysisConfig, JobContext
-from pathlib import Path
+from services.analyze_dual import DualModeAnalyzer
+
 
 async def debug_dual_mode():
     print('🔍 调试双模式分析器')
@@ -22,7 +23,7 @@ async def debug_dual_mode():
     analyzer = DualModeAnalyzer()
     config = AnalysisConfig()
     
-    print(f'配置信息:')
+    print('配置信息:')
     print(f'  - AI启用: {config.ai_enabled}')
     print(f'  - 规则启用: {config.rule_enabled}')
     print(f'  - 双模式启用: {config.dual_mode}')

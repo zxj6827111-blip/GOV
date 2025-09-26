@@ -3,14 +3,13 @@
 实现关键预算检查规则，包括目录一致性、缺表检查、口径一致性、总表恒等、年份一致性
 """
 
-import re
-from typing import List, Dict, Any, Optional, Tuple, Set
-from decimal import Decimal
 import logging
+import re
 from dataclasses import dataclass
+from typing import Any, Dict, List
 
-from .table_name_matcher import TableNameMatcher
 from .robust_number_parser import RobustNumberParser
+from .table_name_matcher import TableNameMatcher
 
 logger = logging.getLogger(__name__)
 

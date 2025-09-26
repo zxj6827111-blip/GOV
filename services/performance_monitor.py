@@ -4,17 +4,18 @@
 """
 
 import asyncio
+import gc
 import logging
-import psutil
 import time
 import weakref
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable, AsyncIterator
 from threading import Lock
-import gc
+from typing import Any, Callable, Dict, List, Optional
+
+import psutil
 
 logger = logging.getLogger(__name__)
 

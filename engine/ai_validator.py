@@ -3,15 +3,14 @@ AI验证器实现
 负责使用AI技术验证和增强规则引擎的结果
 """
 
-import logging
-from typing import List, Dict, Any, Optional, Set, Tuple
-from dataclasses import dataclass, field
-import asyncio
-from enum import Enum
 import hashlib
+import logging
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
-from .hybrid_validator import ValidationIssue, IssueSource, IssueSeverity, IssueConfidence
 from .ai.extractor_client import ExtractorClient, ExtractorConfig
+from .hybrid_validator import IssueConfidence, IssueSeverity, IssueSource, ValidationIssue
 
 logger = logging.getLogger(__name__)
 

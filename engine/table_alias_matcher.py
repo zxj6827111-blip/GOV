@@ -1,8 +1,6 @@
 # engine/table_alias_matcher.py
-"""
-九张表名称与别名库
-支持标准名+常见别名，正则/模糊匹配，跨页表题识别
-"""
+"""九张表名称与别名库
+支持标准名+常见别名，正则/模糊匹配，跨页表题识别。"""
 
 import re
 import logging
@@ -108,7 +106,7 @@ NINE_TABLES_ALIASES = [
         required=True
     ),
     TableAlias(
-        standard_name="一般公共预算财政拨款"三公"经费支出决算表",
+        standard_name='一般公共预算财政拨款"三公"经费支出决算表',
         aliases=[
             "一般公共预算财政拨款三公经费支出决算表", "三公经费支出决算表",
             "三公经费决算表", "三公经费表", "公务接待费等支出表"
