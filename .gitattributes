@@ -1,1 +1,6 @@
 samples/templates/附件2：部门决算模板.pdf filter=lfs diff=lfs merge=lfs -text
+*.py  text eol=lf working-tree-encoding=UTF-8
+*.yml text eol=lf
+*.json text eol=lf
+*.ts  text eol=lf
+*.tsx text eol=lf
