@@ -3,14 +3,13 @@
 基于PyMuPDF(fitz)实现PDF文档的坐标定位和截图生成
 新增：命中合并、分页展示、完整句高亮
 """
+import hashlib
+import json
+import logging
 import os
 import zipfile
-import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
-import logging
-import json
-import hashlib
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     import fitz  # PyMuPDF

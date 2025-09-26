@@ -4,8 +4,9 @@ AI规则运行器
 """
 import logging
 import time
-from typing import List, Dict, Any
-from schemas.issues import JobContext, IssueItem
+from typing import Any, List
+
+from schemas.issues import IssueItem
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ async def run_ai_rules_batch(doc: Any,
     Returns:
         List[IssueItem]: AI检查结果
     """
-    logger.info(f"Running AI rules for document")
+    logger.info("Running AI rules for document")
     
     # 模拟AI检测结果
     results = []

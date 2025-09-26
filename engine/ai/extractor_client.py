@@ -4,13 +4,14 @@
 AI抽取器客户端 - 后端调用AI抽取器微服务的客户端
 """
 
-import os
 import asyncio
-import logging
-from typing import List, Dict, Any, Optional
 import hashlib
-import httpx
+import logging
+import os
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 

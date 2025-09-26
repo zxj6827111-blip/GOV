@@ -3,15 +3,16 @@ V3.3规则集加载器和验证器
 支持多文档YAML规则加载、Profile筛选、规则验证
 """
 
-import yaml
-import re
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Set
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from engine.table_name_matcher import TableNameMatcher
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
+
 from engine.robust_number_parser import RobustNumberParser
+from engine.table_name_matcher import TableNameMatcher
 
 logger = logging.getLogger(__name__)
 

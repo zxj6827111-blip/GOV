@@ -11,18 +11,20 @@ minversion = "7.0"
 addopts = "-ra"
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 extend-exclude = ["app", "e2e"]
+extend-select = ["I"]
+ignore = ["E203", "E266", "E501"]
 
 [tool.ruff.lint]
-select = ["E", "F", "B", "I"]
+select = ["E", "F", "B"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.10"
 warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true

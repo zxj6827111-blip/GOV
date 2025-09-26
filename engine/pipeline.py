@@ -1,10 +1,10 @@
 # engine/pipeline.py
 from __future__ import annotations
-import os, time
-from typing import Dict, Any, List, Optional  # ✅ 增加 Optional
-import pdfplumber
 
-from .rules_v33 import ALL_RULES, build_document, order_and_number_issues, Issue
+from typing import List, Optional  # ✅ 增加 Optional
+
+from .rules_v33 import ALL_RULES, Issue, order_and_number_issues
+
 
 def _extract_tables_from_page(page) -> List[List[List[str]]]:
     # 返回：该页的多张表；每张表是 2D 数组（行→列）

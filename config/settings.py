@@ -3,9 +3,10 @@
 支持从 YAML 文件和环境变量加载配置
 """
 import os
-import yaml
-from typing import Dict, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import yaml
 
 from schemas.issues import AnalysisConfig
 

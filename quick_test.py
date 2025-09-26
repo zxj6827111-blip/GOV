@@ -2,9 +2,9 @@
 """
 快速测试双模式分析
 """
+
 import requests
-import json
-import time
+
 
 def quick_test():
     print("🚀 快速双模式测试")

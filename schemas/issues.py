@@ -2,12 +2,13 @@
 统一数据结构定义
 定义 AI 和规则引擎的统一输出格式
 """
-from typing import List, Optional, Dict, Any, Literal, Union
+import hashlib
+import time
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, Field
-import time
-import hashlib
 
 
 class IssueSource(str, Enum):

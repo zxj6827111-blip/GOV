@@ -4,11 +4,12 @@
 支持标准名称、常见别名、模糊匹配和跨页表题识别
 """
 
-import re
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+import re
 from dataclasses import dataclass
-from rapidfuzz import fuzz, process
+from typing import Any, Dict, List, Optional
+
+from rapidfuzz import fuzz
 
 logger = logging.getLogger(__name__)
 

@@ -3,10 +3,10 @@
 定义了验证问题、配置和接口的基础数据结构
 """
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Protocol
-from enum import Enum
 import logging
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional, Protocol
 
 logger = logging.getLogger(__name__)
 

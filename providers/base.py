@@ -2,11 +2,11 @@
 AI 提供商基础接口定义
 统一接口、认证、参数默认值
 """
-from typing import Protocol, Dict, List, Any, Optional, AsyncIterator
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-import time
+from typing import Any, AsyncIterator, Dict, List, Optional, Protocol
 
 
 class LLMErrorType(Enum):

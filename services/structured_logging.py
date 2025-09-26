@@ -7,13 +7,13 @@ import json
 import logging
 import sys
 import time
+import traceback
 from contextvars import ContextVar
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Union
-import traceback
+from typing import Any, Dict, Optional
 
 # 上下文变量
 current_job_id: ContextVar[Optional[str]] = ContextVar('current_job_id', default=None)

@@ -2,12 +2,12 @@
 规则加载器扩展
 在原 YAML 加载基础上兼容新字段，保持向后兼容性
 """
-import yaml
-import os
-from typing import Dict, List, Any, Optional, Union
-from dataclasses import dataclass, field
-from pathlib import Path
 import logging
+import os
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 

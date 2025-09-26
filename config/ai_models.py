@@ -3,11 +3,11 @@ AI模型配置管理器
 实现GLM和DeepSeek的4层容灾架构
 """
 
-import os
 import logging
-from typing import Dict, List, Optional, Any
+import os
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -224,11 +224,11 @@ if __name__ == "__main__":
     # 测试配置
     import json
     
-    print(f"AI模型配置验证:")  
+    print("AI模型配置验证:")  
     validation = validate_ai_config()
     print(json.dumps(validation, indent=2, ensure_ascii=False))
     
-    print(f"\n故障转移序列:")
+    print("\n故障转移序列:")
     models = get_failover_models()
     for i, model in enumerate(models, 1):
         print(f"{i}. {model.provider.value}:{model.model_name} ({model.tier.value}) - {model.base_url}")

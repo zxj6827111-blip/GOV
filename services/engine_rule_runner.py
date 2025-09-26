@@ -4,13 +4,11 @@
 """
 import logging
 import time
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from schemas.issues import JobContext, AnalysisConfig, IssueItem
-from engine.rules_v33 import (
-    ALL_RULES, build_document, Issue, Document
-)
+from engine.rules_v33 import ALL_RULES, Document, Issue, build_document
+from schemas.issues import AnalysisConfig, IssueItem, JobContext
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +167,8 @@ class EngineRuleRunner:
         
         # 写入诊断信息到 uploads/<job_id>/diag.json（包含 per_rule 和回退标记）
         try:
-            import os, json
+            import json
+            import os
             from pathlib import Path
             upload_root = Path(os.getenv("UPLOAD_DIR", "uploads")).resolve()
             job_dir = upload_root / job_context.job_id

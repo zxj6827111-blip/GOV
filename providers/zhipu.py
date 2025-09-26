@@ -2,14 +2,13 @@
 智谱 AI 提供商实现
 支持 GLM-4 系列模型
 """
-import asyncio
 import json
 import time
-from typing import Dict, List, Any, Optional, AsyncIterator
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import aiohttp
 
-from .base import BaseLLMProvider, LLMResponse, LLMError, LLMErrorType
+from .base import BaseLLMProvider, LLMError, LLMErrorType, LLMResponse
 
 
 class ZhipuProvider(BaseLLMProvider):

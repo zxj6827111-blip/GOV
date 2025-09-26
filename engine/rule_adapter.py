@@ -2,12 +2,10 @@
 规则引擎适配器 - 将现有规则系统适配到混合验证架构
 """
 
-from typing import List, Dict, Any, Optional
 import logging
-from .hybrid_validator import (
-    ValidationIssue, ValidationContext, IssueSource, 
-    IssueSeverity, IssueConfidence
-)
+from typing import Any, Dict, List
+
+from .hybrid_validator import IssueConfidence, IssueSeverity, IssueSource, ValidationContext, ValidationIssue
 from .rules_v33 import ALL_RULES, Document, Issue, build_document
 
 logger = logging.getLogger(__name__)

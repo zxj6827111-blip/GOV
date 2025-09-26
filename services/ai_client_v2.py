@@ -8,14 +8,17 @@ import asyncio
 import json
 import logging
 import time
-from typing import Dict, List, Any, Optional, AsyncIterator
 from dataclasses import dataclass
-import aiohttp
+from typing import Any, AsyncIterator, Dict, List, Optional
+
 import httpx
 
 from config.ai_models import (
-    AIModelManager, ModelConfig, ModelProvider, ModelTier,
-    get_failover_models, validate_ai_config
+    AIModelManager,
+    ModelConfig,
+    ModelProvider,
+    get_failover_models,
+    validate_ai_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -459,7 +462,7 @@ if __name__ == "__main__":
                     temperature=0.2,
                     max_tokens=100
                 )
-                print(f"聊天测试成功:")
+                print("聊天测试成功:")
                 print(f"  模型: {response.provider}:{response.model}")
                 print(f"  层级: {response.tier}")
                 print(f"  耗时: {response.latency_ms}ms")
