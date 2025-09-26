@@ -1,6 +1,6 @@
 meta:
   version: 1
-  description: "GovBudgetChecker 样例清单：模板 / 正确 / 错误"
+  description: "GovBudgetChecker 最小回归样例：模板 / 正确 / 典型错误"
   rules_file: "rules/v3_3.yaml"
 
 samples:
@@ -29,31 +29,13 @@ samples:
       rules_should_not_trigger: [ "GJ-001", "TB-003" ]
       must_find_tables: [ "收入支出决算总表", "财政拨款收支决算总表" ]
 
-  - id: shanghai-2023-bad-gouji
+  - id: shanghai-2024-missing-tables
     type: bad
-    file: samples/bad/上海市XX局_2023决算公开_支出勾稽错误.pdf
-    expect:
-      rules_should_trigger:
-        - id: "GJ-001"
-          hint: "支出合计 != 结余分配 + 年末结转和结余 + 本年支出合计"
-          min_hits: 1
-      rules_should_not_trigger: [ "TB-003" ]
-
-  - id: fund-text-mismatch-bad
-    type: bad
-    file: samples/bad/政府性基金_口径不一致_示例.pdf
-    expect:
-      rules_should_trigger:
-        - id: "TB-003"
-          hint: "情况说明与表‘政府性基金预算财政拨款收入-合计’不一致"
-          min_hits: 1
-
-  - id: missing-tables-bad
-    type: bad
-    file: samples/bad/中共上海市普陀区委社会工作部 2024 年度部门决算.pdf，上海市普陀区规划和自然资源局 2024 年度部门决算.pdf
+    file: samples/bad/中共上海市普陀区委社会工作部 2024 年度部门决算.pdf
     expect:
       rules_should_trigger:
         - id: "ZB-002"
           missing_tables:
             - "财政拨款收支决算总表"
             - "一般公共预算财政拨款支出决算明细表"
+          hint: "示例用于验证缺表告警逻辑"

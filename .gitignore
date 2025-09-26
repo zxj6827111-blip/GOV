@@ -5,11 +5,18 @@ __pycache__/
 .env
 .env.*
 node_modules/
+.next/
 app/.next/
 app/out/
 .DS_Store
+.pytest_cache/
+dist/
+build/
+jobs/
+coverage/
 pytest_cache/
 tiny.pdf
+samples/**/*.pdf
 
 # uploads
 uploads/
